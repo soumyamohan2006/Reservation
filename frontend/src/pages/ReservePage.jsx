@@ -150,7 +150,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       </section>
 
       {date && (
-        <section className="booking-card" style={{ marginTop: '2rem', background: '#020b2f', border: '1px solid #1f2937' }}>
+        <section className="booking-card" style={{ marginTop: '2rem', background: 'linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%)', border: '1px solid rgba(124, 58, 237, 0.3)' }}>
           <h2 className="booking-title" style={{ color: '#ffffff', margin: '0 0 0.25rem' }}>Available Slots</h2>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.25rem' }}>{date} • {hall.name}</p>
 
@@ -171,8 +171,8 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '0.9rem 1rem',
-                        background: selected ? '#1e3a8a' : '#0f172a',
-                        border: selected ? '2px solid #4169e1' : '1px solid #1f2937',
+                        background: selected ? '#e0e7ff' : '#ffffff',
+                        border: selected ? '2px solid #6d28d9' : '1px solid #cbd5e1',
                         borderRadius: selected ? '0.5rem 0.5rem 0 0' : '0.5rem',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -181,19 +181,19 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
                           width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0,
-                          border: selected ? '2px solid #4169e1' : '2px solid #475569',
-                          background: selected ? '#4169e1' : 'transparent',
+                          border: selected ? '2px solid #6d28d9' : '2px solid #cbd5e1',
+                          background: selected ? '#6d28d9' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'white', fontSize: '0.7rem', fontWeight: 'bold',
+                          color: selected ? 'white' : '#475569', fontSize: '0.7rem', fontWeight: 'bold',
                         }}>
                           {selected && '✓'}
                         </div>
-                        <span style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 600 }}>
+                        <span style={{ color: '#0f172a', fontSize: '1rem', fontWeight: 600 }}>
                           {slot.timeSlot}
                         </span>
                       </div>
                       {selected && (
-                        <span style={{ color: '#86efac', fontSize: '0.8rem', fontWeight: 600 }}>SELECTED</span>
+                        <span style={{ color: '#6d28d9', fontSize: '0.8rem', fontWeight: 600 }}>SELECTED</span>
                       )}
                     </div>
 
@@ -201,8 +201,8 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                     {selected && (
                       <div style={{
                         padding: '1rem',
-                        background: '#0d1f3c',
-                        border: '2px solid #4169e1',
+                        background: '#161b22',
+                        border: '2px solid #6d28d9',
                         borderTop: 'none',
                         borderRadius: '0 0 0.5rem 0.5rem',
                       }}>

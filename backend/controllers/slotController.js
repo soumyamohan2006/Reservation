@@ -2,12 +2,13 @@ import Slot from '../models/Slot.js'
 import Hall from '../models/Hall.js'
 
 export const createSlot = async (req, res) => {
-  const { hallId, date, timeSlot } = req.body
+  const { hallId, date, timeSlot, isBooked } = req.body
   if (!hallId || !date || !timeSlot)
     return res.status(400).json({ message: 'hallId, date and timeSlot are required.' })
   try {
-    const slot = await Slot.create({ hallId, date, timeSlot })
-    return res.status(201).json(slot)
+    const slot = await Slot.create({ hallId, date, timeSlot, isBooked: isBooked || false })
+    const populated = await slot.populate('hallId', 'name capacity')
+    return res.status(201).json(populated)
   } catch (err) {
     if (err.code === 11000)
       return res.status(409).json({ message: 'Slot already exists for this hall/date/time.' })
@@ -18,6 +19,17 @@ export const createSlot = async (req, res) => {
 export const getAllSlots = async (_req, res) => {
   try {
     return res.json(await Slot.find().populate('hallId', 'name capacity'))
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+export const getCustodianSlots = async (req, res) => {
+  try {
+    const halls = await Hall.find({ custodianId: req.user.id })
+    const hallIds = halls.map(h => h._id)
+    const slots = await Slot.find({ hallId: { $in: hallIds } }).populate('hallId', 'name capacity')
+    return res.json(slots)
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }

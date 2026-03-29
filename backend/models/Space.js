@@ -7,6 +7,7 @@ const spaceSchema = new mongoose.Schema({
   description: { type: String },
   features:    [{ type: String }],
   image:       { type: String },
+  custodianId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true })
 
 export default mongoose.model('Space', spaceSchema)

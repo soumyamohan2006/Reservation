@@ -41,3 +41,24 @@ export const login = async (req, res) => {
     return res.status(500).json({ message: err.message })
   }
 }
+
+// POST /api/auth/set-password
+export const setPassword = async (req, res) => {
+  const { token, password } = req.body
+  if (!token || !password)
+    return res.status(400).json({ message: 'token and password are required.' })
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const user = await User.findById(decoded.userId)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    user.password = password
+    await user.save()
+    return res.json({ message: 'Password set successfully.' })
+  } catch (err) {
+    if (err.name === 'TokenExpiredError')
+      return res.status(401).json({ message: 'Token has expired.' })
+    return res.status(500).json({ message: err.message })
+  }
+}

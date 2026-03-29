@@ -1,5 +1,6 @@
 import Booking from '../models/Booking.js'
 import Slot from '../models/Slot.js'
+import Hall from '../models/Hall.js'
 import Notification from '../models/Notification.js'
 import User from '../models/User.js'
 import { sendMail } from '../utils/mailer.js'
@@ -11,7 +12,7 @@ export const createBooking = async (req, res) => {
     return res.status(400).json({ message: 'hallId and slotId are required.' })
 
   try {
-    const slot = await Slot.findById(slotId).populate('hallId', 'name')
+    const slot = await Slot.findById(slotId).populate({ path: 'hallId', populate: { path: 'custodianId', select: 'name email' } })
     if (!slot) return res.status(404).json({ message: 'Slot not found.' })
 
     if (slot.isBooked)
@@ -31,21 +32,99 @@ export const createBooking = async (req, res) => {
     })
 
     // Email custodian about new booking request
-    const user = await User.findById(req.user.id, 'name email')
+    const user = await User.findById(req.user.id, 'name email role')
     const hallName = slot.hallId?.name || 'Hall'
-    sendMail({
-      to: process.env.CUSTODIAN_EMAIL,
-      subject: 'New Hall Booking Request',
-      html: `
-        <h3>New Booking Request</h3>
-        <p><b>Requested by:</b> ${user.name} (${user.email})</p>
-        <p><b>Hall:</b> ${hallName}</p>
-        <p><b>Date:</b> ${slot.date}</p>
-        <p><b>Time Slot:</b> ${slot.timeSlot}</p>
-        <p><b>Message:</b> ${message || 'N/A'}</p>
-        <p>Please log in to the admin panel to approve or reject this request.</p>
-      `,
-    }).catch(err => console.error('Custodian email error:', err.message))
+    const custodian = slot.hallId?.custodianId
+    const custodianEmail = custodian?.email || process.env.CUSTODIAN_EMAIL
+    const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+    const base = `http://localhost:4000/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}`
+    const requestedOn = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    const roleLabel = user.role === 'student' ? 'Student' : user.role === 'faculty' ? 'Faculty' : user.role === 'user' ? 'Student' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    const [msgEvent, msgTime] = (message || '').split('|').map(s => s.trim())
+    
+    try {
+      await sendMail({
+        to: custodianEmail,
+        subject: `New Booking Request — ${bookingRef}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+            <div style="background:#1e3a8a;padding:1.25rem 1.5rem">
+              <h2 style="color:#fff;margin:0;font-size:1.1rem">📋 New Hall Booking Request</h2>
+            </div>
+            <div style="padding:1.5rem">
+
+              <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;width:40%;vertical-align:top">Booking ID</td>
+                  <td style="padding:0.55rem 0;font-weight:700;color:#1e3a8a;font-size:1rem;letter-spacing:0.05em">${bookingRef}</td>
+                </tr>
+                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0"></td></tr>
+
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested by</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${user.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Email</td>
+                  <td style="padding:0.55rem 0;color:#0f172a">${user.email}</td>
+                </tr>
+                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
+
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Facility</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${hallName}</td>
+                </tr>
+                ${msgEvent ? `<tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Name</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Date</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${slot.date}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Available Slot</td>
+                  <td style="padding:0.55rem 0;color:#0f172a">${slot.timeSlot}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Time</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgTime || message || 'N/A'}</td>
+                </tr>
+                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
+
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Role</td>
+                  <td style="padding:0.55rem 0;color:#0f172a">${roleLabel}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested On</td>
+                  <td style="padding:0.55rem 0;color:#0f172a">${requestedOn}</td>
+                </tr>
+              </table>
+
+              <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
+                <a href="${base}&status=Approved"
+                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
+                  ✅ Approve
+                </a>
+                <a href="${base}&status=Rejected"
+                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
+                  ❌ Reject
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
+            </div>
+          </div>
+        `,
+      })
+      booking.emailSentToCustodian = true
+      await booking.save()
+    } catch (err) {
+      console.error('Custodian email error:', err.message)
+      booking.emailError = `Custodian email failed: ${err.message}`
+      await booking.save()
+    }
 
     return res.status(201).json(booking)
   } catch (err) {
@@ -60,6 +139,23 @@ export const getAllBookings = async (_req, res) => {
       .populate('userId', 'name email')
       .populate('hallId', 'name')
       .populate('slotId', 'date timeSlot')
+      .sort({ createdAt: -1 })
+    return res.json(bookings)
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// GET /api/bookings/custodian — custodian views only their hall bookings
+export const getCustodianBookings = async (req, res) => {
+  try {
+    const halls = await Hall.find({ custodianId: req.user.id })
+    const hallIds = halls.map(h => h._id)
+    const bookings = await Booking.find({ hallId: { $in: hallIds } })
+      .populate('userId', 'name email')
+      .populate('hallId', 'name')
+      .populate('slotId', 'date timeSlot')
+      .sort({ createdAt: -1 })
     return res.json(bookings)
   } catch (err) {
     return res.status(500).json({ message: err.message })
@@ -84,21 +180,36 @@ export const updateBookingStatus = async (req, res) => {
 
     if (status === 'Approved') {
       await Slot.findByIdAndUpdate(booking.slotId, { isBooked: true })
-
-      // Email user only on approval
-      sendMail({
-        to: booking.userId.email,
-        subject: 'Your Hall Booking Has Been Approved',
-        html: `
-          <h3>Booking Approved!</h3>
-          <p>Hi ${booking.userId.name},</p>
-          <p>Your booking request has been <b>approved</b> by the custodian.</p>
-          <p><b>Hall:</b> ${booking.hallId?.name || 'Hall'}</p>
-          <p><b>Date:</b> ${booking.slotId?.date}</p>
-          <p><b>Time Slot:</b> ${booking.slotId?.timeSlot}</p>
-          <p>Thank you for using the Hall Booking System.</p>
-        `,
-      }).catch(err => console.error('User approval email error:', err.message))
+      const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+      
+      try {
+        await sendMail({
+          to: booking.userId.email,
+          subject: `Your Booking ${bookingRef} Has Been Approved`,
+          html: `
+            <div style="font-family:sans-serif;max-width:540px;margin:auto;background:#0f172a;color:#e2e8f0;padding:2rem;border-radius:0.75rem">
+              <h2 style="color:#16a34a;margin-top:0">✅ Booking Approved!</h2>
+              <div style="background:#1e293b;border:1px solid #334155;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.25rem;display:inline-block">
+                <span style="color:#94a3b8;font-size:0.8rem;font-weight:600">BOOKING ID</span><br/>
+                <span style="color:#60a5fa;font-size:1.4rem;font-weight:800;letter-spacing:0.05em">${bookingRef}</span>
+              </div>
+              <p>Hi <b>${booking.userId.name}</b>, your booking has been <b style="color:#86efac">approved</b> by the custodian.</p>
+              <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem;width:40%">Hall</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.hallId?.name}</td></tr>
+                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Date</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.date}</td></tr>
+                <tr><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Time Slot</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.timeSlot}</td></tr>
+              </table>
+              <p style="color:#475569;font-size:0.75rem;margin-top:1rem">Booking ID ${bookingRef} · Campus Hall Booking System</p>
+            </div>
+          `,
+        })
+        booking.emailSentToUser = true
+        await booking.save()
+      } catch (err) {
+        console.error('User approval email error:', err.message)
+        booking.emailError = booking.emailError ? `${booking.emailError}; User email failed: ${err.message}` : `User email failed: ${err.message}`
+        await booking.save()
+      }
     }
 
     await Notification.create({

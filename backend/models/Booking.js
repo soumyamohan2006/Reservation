@@ -5,7 +5,10 @@ const bookingSchema = new mongoose.Schema({
   hallId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Hall', required: true },
   slotId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Slot', required: true },
   status:  { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
-  message: { type: String, default: '' }, // optional request message from user
+  message: { type: String, default: '' },
+  emailSentToCustodian: { type: Boolean, default: false },
+  emailSentToUser: { type: Boolean, default: false },
+  emailError: { type: String, default: '' },
 }, { timestamps: true })
 
 export default mongoose.model('Booking', bookingSchema)

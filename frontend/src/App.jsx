@@ -9,6 +9,10 @@ import ReservePage from './pages/ReservePage'
 import RegisterPage from './pages/RegisterPage'
 import SpacesPage from './pages/SpacesPage'
 import AdminPage from './pages/AdminPage'
+import SetPasswordPage from './pages/SetPasswordPage'
+import AdminLoginPage from './pages/AdminLoginPage'
+import CustodianPage from './pages/CustodianPage'
+import CustodianLoginPage from './pages/CustodianLoginPage'
 
 function App() {
   const { pathname } = useLocation()
@@ -65,7 +69,8 @@ function App() {
             <>
               <div className="nav-center-links">
                 <Link to="/" className="nav-link">Catalog</Link>
-                {(role === 'admin' || role === 'custodian') && <Link to="/admin" className="nav-link">Admin</Link>}
+                {role === 'admin' && <Link to="/admin" className="nav-link">Admin Panel</Link>}
+                {role === 'custodian' && <Link to="/custodian" className="nav-link">Custodian Panel</Link>}
                 {isPrivatePage && (
                   <Link to="/spaces" className="nav-link">
                     Spaces
@@ -141,13 +146,17 @@ function App() {
         <Route path="/login" element={<LoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
         <Route path="/login/:hallId" element={<LoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
         <Route path="/register" element={<RegisterPage setUser={setUser} setToken={setToken} setAppRole={setRole} />} />
-        <Route path="/" element={<HomePage halls={halls} />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/" element={<HomePage halls={halls} user={user} role={role} />} />
         <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} /> : <Navigate to="/login" replace />} />
         <Route path="/spaces" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" replace />} />
         <Route path="/spaces/:hallId" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" replace />} />
         <Route path="/reserve/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
         <Route path="/book/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
-        <Route path="/admin" element={role === 'admin' || role === 'custodian' ? <AdminPage token={token} role={role} /> : <Navigate to="/" replace />} />
+        <Route path="/admin" element={role === 'admin' ? <AdminPage token={token} role={role} /> : <Navigate to="/admin-login" replace />} />
+        <Route path="/custodian" element={role === 'custodian' ? <CustodianPage token={token} user={user} /> : <Navigate to="/custodian-login" replace />} />
+        <Route path="/custodian-login" element={role === 'custodian' ? <Navigate to="/custodian" replace /> : <CustodianLoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
+        <Route path="/admin-login" element={role === 'admin' ? <Navigate to="/admin" replace /> : role === 'custodian' ? <Navigate to="/custodian" replace /> : <AdminLoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
       </Routes>
     </div>
   )
