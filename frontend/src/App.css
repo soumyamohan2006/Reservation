@@ -1049,53 +1049,241 @@
   .role-toggle {
     grid-template-columns: 1fr;
   }
+
+  /* Admin Panel Responsive */
+  main[style*="background: #020b2f"] > div {
+    padding: 1rem !important;
+  }
+
+  main[style*="background: #020b2f"] table {
+    font-size: 0.85rem;
+  }
+
+  main[style*="background: #020b2f"] th,
+  main[style*="background: #020b2f"] td {
+    padding: 0.5rem !important;
+  }
+
+  main[style*="background: #020b2f"] form[style*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  main[style*="background: #020b2f"] button {
+    font-size: 0.85rem !important;
+  }
 }
 
 @media (max-width: 768px) {
+  .nav-bar {
+    height: auto;
+    min-height: 62px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+  }
+
+  .brand {
+    font-size: 1.1rem;
+  }
+
   .nav-center-links {
     position: static;
     transform: none;
-    justify-self: center;
+    width: 100%;
+    order: 3;
+    justify-content: center;
     gap: 18px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(124, 58, 237, 0.2);
+  }
+
+  .nav-auth-btns {
+    gap: 6px;
+  }
+
+  .btn-nav {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .nav-username {
+    font-size: 0.8rem;
   }
 
   .profile-icon-dark {
     display: none;
   }
 
+  .hero-section {
+    padding: 64px 18px 80px;
+  }
+
+  .hero-title {
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+  }
+
+  .catalog-section {
+    padding: 0 18px 64px;
+  }
+
+  .hall-grid {
+    gap: 24px;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+
+  .card-actions .btn {
+    width: 100%;
+  }
+
+  .login-page {
+    padding: 40px 18px;
+  }
+
+  .login-card {
+    padding: 20px;
+  }
+
+  .login-title {
+    font-size: 1.8rem;
+  }
+
+  .booking-page {
+    padding: 18px;
+  }
+
   .booking-card {
-    padding: 22px;
+    padding: 18px;
   }
 
   .booking-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
   .booking-subtitle {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
   }
 
   .booking-form .form-field {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 
   .booking-form .form-field input,
   .booking-form .form-field select,
   .booking-form .form-field textarea {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    min-height: 44px;
   }
 
   .btn-confirm {
     font-size: 1rem;
+    min-height: 48px;
   }
 
   .space-card-head {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .space-card-head .btn {
+    width: 100%;
   }
 
   .calendar-row {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .spaces-page {
+    padding: 24px 18px 48px;
+  }
+
+  .subpage {
+    padding: 32px 18px 64px;
+  }
+
+  .detail-content {
+    padding: 20px;
+  }
+
+  .detail-actions {
+    flex-direction: column;
+  }
+
+  .detail-actions .btn {
+    width: 100%;
+  }
+
+  .time-picker-card {
+    padding: 18px;
+  }
+
+  .clock-dial {
+    width: 220px;
+    height: 220px;
+  }
+
+  .clock-hand {
+    height: 80px;
+    top: calc(50% - 80px);
+  }
+}
+
+@media (max-width: 480px) {
+  .brand {
+    font-size: 1rem;
+  }
+
+  .nav-link {
+    font-size: 0.8rem;
+  }
+
+  .hero-section {
+    padding: 48px 16px 64px;
+  }
+
+  .catalog-section {
+    padding: 0 16px 48px;
+  }
+
+  .login-page {
+    padding: 32px 16px;
+  }
+
+  .booking-page {
+    padding: 16px;
+  }
+
+  .booking-card {
+    padding: 16px;
+  }
+
+  .booking-title {
+    font-size: 1.6rem;
+  }
+
+  .btn {
+    font-size: 0.875rem;
+    padding: 10px 16px;
+  }
+
+  .clock-dial {
+    width: 200px;
+    height: 200px;
+  }
+
+  .clock-hand {
+    height: 70px;
+    top: calc(50% - 70px);
+  }
+
+  .dial-minute {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
 }
 
