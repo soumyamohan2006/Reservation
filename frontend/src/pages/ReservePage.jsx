@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { API_URL } from '../config'
 
-// Handles both "9AM"/"1PM" (slot format) and "09:00"/"13:00" (input type=time format)
 function toMinutes(t) {
   if (!t) return 0
   if (t.includes(':')) {
@@ -44,7 +44,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     setBookingError('')
     setBookingSuccess('')
     setLoadingSlots(true)
-    fetch(`http://localhost:4000/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
+    fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -81,7 +81,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     setBookingError('')
     setBookingSuccess('')
     try {
-      const res = await fetch('http://localhost:4000/api/bookings', {
+      const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       setNeededEnd('')
       setTimeError('')
       setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting admin approval.`)
-      fetch(`http://localhost:4000/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
+      fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(r => r.json()).then(d => setAvailableSlots(Array.isArray(d) ? d : []))
     } catch {
@@ -197,7 +197,6 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                       )}
                     </div>
 
-                    {/* Exact time inputs — expands below selected slot */}
                     {selected && (
                       <div style={{
                         padding: '1rem',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import './App.css'
+import { API_URL } from './config'
 import staticHalls from './data/halls'
 import HallDetailsPage from './pages/HallDetailsPage'
 import HomePage from './pages/HomePage'
@@ -28,7 +29,7 @@ function App() {
   const [dbHalls, setDbHalls] = useState([])
 
   const fetchHalls = () => {
-    fetch('http://localhost:4000/api/halls')
+    fetch(`${API_URL}/api/halls`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
