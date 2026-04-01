@@ -44,7 +44,7 @@ export const updateHall = async (req, res) => {
       const custodian = await User.findById(req.body.custodianId)
       if (custodian) {
         const token = jwt.sign({ userId: custodian._id }, process.env.JWT_SECRET, { expiresIn: '1h' })
-        const setPasswordLink = `http://localhost:5173/set-password?token=${token}`
+        const setPasswordLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/set-password?token=${token}`
         
         sendMail({
           to: custodian.email,
