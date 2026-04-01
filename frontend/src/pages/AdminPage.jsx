@@ -43,6 +43,9 @@ export default function AdminPage({ token }) {
   const [slotDate, setSlotDate] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkStartDate, setBulkStartDate] = useState('')
+  const [bulkEndDate, setBulkEndDate] = useState('')
 
   // Custodian form
   const [custodianName, setCustodianName] = useState('')
@@ -127,13 +130,29 @@ export default function AdminPage({ token }) {
   // --- SLOTS ---
   const addSlot = async (e) => {
     e.preventDefault()
-    if (!slotHallId || !slotDate) { flash('❌ Hall and date are required.'); return }
-    const finalStartTime = startTime || '8AM'
-    const finalEndTime = endTime || '12AM'
-    const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, date: slotDate, timeSlot: `${finalStartTime}-${finalEndTime}` }) })
-    const d = await r.json()
-    if (r.ok) { flash('✅ Slot added.'); setSlotDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
-    else flash(`❌ ${d.message}`)
+    
+    if (bulkMode) {
+      if (!slotHallId || !bulkStartDate || !bulkEndDate) { flash('❌ Hall, start date and end date are required.'); return }
+      const timeSlot = startTime && endTime ? `${startTime}-${endTime}` : '8PM-10PM'
+      const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, startDate: bulkStartDate, endDate: bulkEndDate, timeSlot }) })
+      const d = await r.json()
+      if (r.ok) { 
+        flash(`✅ ${d.message || 'Slots generated.'}`)
+        setBulkStartDate('')
+        setBulkEndDate('')
+        setStartTime('')
+        setEndTime('')
+        fetchSlots()
+      } else flash(`❌ ${d.message}`)
+    } else {
+      if (!slotHallId || !slotDate) { flash('❌ Hall and date are required.'); return }
+      const finalStartTime = startTime || '8AM'
+      const finalEndTime = endTime || '12AM'
+      const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, date: slotDate, timeSlot: `${finalStartTime}-${finalEndTime}` }) })
+      const d = await r.json()
+      if (r.ok) { flash('✅ Slot added.'); setSlotDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
+      else flash(`❌ ${d.message}`)
+    }
   }
 
   const deleteSlot = async (id) => { await api(`/slots/${id}`, { method: 'DELETE' }); fetchSlots() }
@@ -364,29 +383,75 @@ export default function AdminPage({ token }) {
           {tab === '🕐 Slots' && (
             <>
               <div style={card}>
-                <h2 style={{ color: '#fff', marginTop: 0, fontSize: '1rem' }}>➕ Add Slot</h2>
-                <form onSubmit={addSlot} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
-                  <label style={lbl}>Hall
-                    <select style={inp} value={slotHallId} onChange={e => setSlotHallId(e.target.value)}>
-                      <option value="" disabled>Select hall</option>
-                      {halls.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-                    </select>
-                  </label>
-                  <label style={lbl}>Date <input style={inp} type="date" value={slotDate} onChange={e => { setSlotDate(e.target.value); setStartTime(''); setEndTime('') }} /></label>
-                  <label style={lbl}>Start Time (default: 8AM)
-                    <select style={inp} value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }}>
-                      <option value="">Default (8AM)</option>
-                      {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </label>
-                  <label style={lbl}>End Time (default: 12PM)
-                    <select style={inp} value={endTime} onChange={e => setEndTime(e.target.value)}>
-                      <option value="">Default (12PM)</option>
-                      {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </label>
-                  <button type="submit" style={{ padding: '0.65rem 1.2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer' }}>Add</button>
-                </form>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ color: '#fff', margin: 0, fontSize: '1rem' }}>➕ {bulkMode ? 'Generate Slots (Bulk)' : 'Add Single Slot'}</h2>
+                  <button onClick={() => { setBulkMode(!bulkMode); setSlotDate(''); setBulkStartDate(''); setBulkEndDate(''); setStartTime(''); setEndTime('') }}
+                    style={{ padding: '0.5rem 1rem', background: bulkMode ? '#7c3aed' : '#1e3a8a', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}>
+                    {bulkMode ? '📅 Switch to Single' : '📆 Switch to Bulk'}
+                  </button>
+                </div>
+
+                {bulkMode ? (
+                  <form onSubmit={addSlot} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                      <label style={lbl}>Hall
+                        <select style={inp} value={slotHallId} onChange={e => setSlotHallId(e.target.value)} required>
+                          <option value="" disabled>Select hall</option>
+                          {halls.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+                        </select>
+                      </label>
+                      <label style={lbl}>Start Date
+                        <input style={inp} type="date" value={bulkStartDate} onChange={e => setBulkStartDate(e.target.value)} required />
+                      </label>
+                      <label style={lbl}>End Date
+                        <input style={inp} type="date" value={bulkEndDate} onChange={e => setBulkEndDate(e.target.value)} required />
+                      </label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <label style={lbl}>Start Time (default: 8PM)
+                        <select style={inp} value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }}>
+                          <option value="">Default (8PM)</option>
+                          {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </label>
+                      <label style={lbl}>End Time (default: 10PM)
+                        <select style={inp} value={endTime} onChange={e => setEndTime(e.target.value)}>
+                          <option value="">Default (10PM)</option>
+                          {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#1e1b4b', border: '1px solid #4338ca', borderRadius: '0.5rem', color: '#a5b4fc', fontSize: '0.85rem' }}>
+                      💡 <b>Bulk Mode:</b> Generates slots for every day between start and end date. Default time: 8PM-10PM (20:00-22:00)
+                    </div>
+                    <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>
+                      🚀 Generate Slots
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={addSlot} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+                    <label style={lbl}>Hall
+                      <select style={inp} value={slotHallId} onChange={e => setSlotHallId(e.target.value)}>
+                        <option value="" disabled>Select hall</option>
+                        {halls.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+                      </select>
+                    </label>
+                    <label style={lbl}>Date <input style={inp} type="date" value={slotDate} onChange={e => { setSlotDate(e.target.value); setStartTime(''); setEndTime('') }} /></label>
+                    <label style={lbl}>Start Time (default: 8AM)
+                      <select style={inp} value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }}>
+                        <option value="">Default (8AM)</option>
+                        {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </label>
+                    <label style={lbl}>End Time (default: 12PM)
+                      <select style={inp} value={endTime} onChange={e => setEndTime(e.target.value)}>
+                        <option value="">Default (12PM)</option>
+                        {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </label>
+                    <button type="submit" style={{ padding: '0.65rem 1.2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer' }}>Add</button>
+                  </form>
+                )}
               </div>
 
               <div style={card}>

@@ -2,7 +2,40 @@ import Slot from '../models/Slot.js'
 import Hall from '../models/Hall.js'
 
 export const createSlot = async (req, res) => {
-  const { hallId, date, timeSlot, isBooked } = req.body
+  const { hallId, date, timeSlot, isBooked, startDate, endDate } = req.body
+  
+  // Bulk generation mode: startDate + endDate
+  if (startDate && endDate) {
+    if (!hallId) return res.status(400).json({ message: 'hallId is required for bulk generation.' })
+    
+    try {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      
+      if (start > end) return res.status(400).json({ message: 'startDate must be before endDate.' })
+      
+      const defaultTimeSlot = timeSlot || '8PM-10PM'
+      const slots = []
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0]
+        
+        // Check if slot already exists
+        const exists = await Slot.findOne({ hallId, date: dateStr, timeSlot: defaultTimeSlot })
+        if (!exists) {
+          const slot = await Slot.create({ hallId, date: dateStr, timeSlot: defaultTimeSlot, isBooked: isBooked || false })
+          slots.push(slot)
+        }
+      }
+      
+      const populated = await Slot.find({ _id: { $in: slots.map(s => s._id) } }).populate('hallId', 'name capacity')
+      return res.status(201).json({ message: `Generated ${slots.length} slot(s).`, slots: populated })
+    } catch (err) {
+      return res.status(500).json({ message: err.message })
+    }
+  }
+  
+  // Single slot creation mode
   if (!hallId || !date || !timeSlot)
     return res.status(400).json({ message: 'hallId, date and timeSlot are required.' })
   try {
