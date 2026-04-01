@@ -92,12 +92,12 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       })
       const data = await res.json()
       if (!res.ok) { setBookingError(data.message); return }
-      setBookingSuccess(`Booking submitted for ${selectedSlot.timeSlot} (${neededStart}–${neededEnd}) on ${date}. Awaiting approval.`)
+      setBookingSuccess(`Booking submitted for ${hall.name} on ${date} (${selectedSlot.timeSlot}: ${neededStart}–${neededEnd}). Awaiting approval.`)
       setSelectedSlot(null)
       setNeededStart('')
       setNeededEnd('')
       setTimeError('')
-      setHeaderNotice('submitted')
+      setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting admin approval.`)
       fetch(`http://localhost:4000/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(r => r.json()).then(d => setAvailableSlots(Array.isArray(d) ? d : []))

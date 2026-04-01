@@ -44,8 +44,9 @@ export const createCustodian = async (req, res) => {
     const user = await User.create({ name, email, password, role: 'custodian' })
     
     // Send welcome email with password setup link
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' })
-    const setPasswordLink = `http://localhost:5173/set-password?token=${token}`
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' })
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const setPasswordLink = `${frontendUrl}/set-password?token=${token}`
     
     sendMail({
       to: user.email,
