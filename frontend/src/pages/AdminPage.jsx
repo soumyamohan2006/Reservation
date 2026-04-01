@@ -46,6 +46,11 @@ export default function AdminPage({ token }) {
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkStartDate, setBulkStartDate] = useState('')
   const [bulkEndDate, setBulkEndDate] = useState('')
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [deleteHallId, setDeleteHallId] = useState('')
+  const [deleteTimeSlot, setDeleteTimeSlot] = useState('')
+  const [deleteStartDate, setDeleteStartDate] = useState('')
+  const [deleteEndDate, setDeleteEndDate] = useState('')
 
   // Custodian form
   const [custodianName, setCustodianName] = useState('')
@@ -133,8 +138,11 @@ export default function AdminPage({ token }) {
     
     if (bulkMode) {
       if (!slotHallId || !bulkStartDate || !bulkEndDate) { flash('❌ Hall, start date and end date are required.'); return }
-      const timeSlot = startTime && endTime ? `${startTime}-${endTime}` : '8PM-10PM'
-      const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, startDate: bulkStartDate, endDate: bulkEndDate, timeSlot }) })
+      const timeSlot = (startTime && endTime) ? `${startTime}-${endTime}` : undefined
+      const body = { hallId: slotHallId, startDate: bulkStartDate, endDate: bulkEndDate }
+      if (timeSlot) body.timeSlot = timeSlot
+      
+      const r = await api('/slots', { method: 'POST', body: JSON.stringify(body) })
       const d = await r.json()
       if (r.ok) { 
         flash(`✅ ${d.message || 'Slots generated.'}`)
@@ -147,7 +155,7 @@ export default function AdminPage({ token }) {
     } else {
       if (!slotHallId || !slotDate) { flash('❌ Hall and date are required.'); return }
       const finalStartTime = startTime || '8AM'
-      const finalEndTime = endTime || '12AM'
+      const finalEndTime = endTime || '10PM'
       const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, date: slotDate, timeSlot: `${finalStartTime}-${finalEndTime}` }) })
       const d = await r.json()
       if (r.ok) { flash('✅ Slot added.'); setSlotDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
@@ -157,11 +165,48 @@ export default function AdminPage({ token }) {
 
   const deleteSlot = async (id) => { await api(`/slots/${id}`, { method: 'DELETE' }); fetchSlots() }
 
+  const bulkDeleteSlots = async (e) => {
+    e.preventDefault()
+    if (!deleteHallId && !deleteTimeSlot && !deleteStartDate && !deleteEndDate) {
+      flash('❌ Please select at least one filter.')
+      return
+    }
+    
+    const body = {}
+    if (deleteHallId) body.hallId = deleteHallId
+    if (deleteTimeSlot) body.timeSlot = deleteTimeSlot
+    if (deleteStartDate) body.startDate = deleteStartDate
+    if (deleteEndDate) body.endDate = deleteEndDate
+    
+    const filterDesc = []
+    if (deleteHallId) filterDesc.push(`Hall: ${halls.find(h => h._id === deleteHallId)?.name}`)
+    if (deleteTimeSlot) filterDesc.push(`Time: ${deleteTimeSlot}`)
+    if (deleteStartDate && deleteEndDate) filterDesc.push(`Dates: ${deleteStartDate} to ${deleteEndDate}`)
+    else if (deleteStartDate) filterDesc.push(`From: ${deleteStartDate}`)
+    else if (deleteEndDate) filterDesc.push(`Until: ${deleteEndDate}`)
+    
+    if (!confirm(`Are you sure you want to delete all slots matching:\n${filterDesc.join('\n')}\n\nThis cannot be undone.`)) return
+    
+    const r = await api('/slots/bulk-delete', { method: 'POST', body: JSON.stringify(body) })
+    const d = await r.json()
+    if (r.ok) {
+      flash(`✅ ${d.message}`)
+      setDeleteHallId('')
+      setDeleteTimeSlot('')
+      setDeleteStartDate('')
+      setDeleteEndDate('')
+      setShowBulkDelete(false)
+      fetchSlots()
+    } else flash(`❌ ${d.message}`)
+  }
+
   const custodians = users.filter(u => u.role === 'custodian')
   const endTimeOptions = TIME_POINTS.filter(t => !startTime || toMinutes(t) > toMinutes(startTime))
 
   const inp = { padding: '0.65rem 0.9rem', background: '#020b2f', border: '1px solid #1e3a8a', borderRadius: '0.5rem', color: '#fff', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }
   const lbl = { color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '0.35rem' }
+  const editBtn = { padding: '0.3rem 0.7rem', background: '#1e3a8a', border: 'none', borderRadius: '0.375rem', color: '#93c5fd', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.2s' }
+  const deleteBtn = { padding: '0.3rem 0.7rem', background: 'transparent', border: '1px solid #b91c1c', borderRadius: '0.375rem', color: '#fca5a5', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.2s' }
 
   return (
     <main style={{ minHeight: '100vh', background: '#020b2f', padding: '2rem 1rem' }}>
@@ -243,8 +288,8 @@ export default function AdminPage({ token }) {
                               {h.custodianId ? `${h.custodianId.name} (${h.custodianId.email})` : '— Unassigned —'}
                             </td>
                             <td style={{ padding: '0.75rem', display: 'flex', gap: '0.5rem' }}>
-                              <button onClick={() => startEditHall(h)} style={{ padding: '0.3rem 0.7rem', background: '#1e3a8a', border: 'none', borderRadius: '0.375rem', color: '#93c5fd', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
-                              <button onClick={() => deleteHall(h._id)} style={{ padding: '0.3rem 0.7rem', background: 'transparent', border: '1px solid #b91c1c', borderRadius: '0.375rem', color: '#fca5a5', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                              <button onClick={() => startEditHall(h)} style={editBtn} onMouseEnter={e => e.target.style.background = '#2563eb'} onMouseLeave={e => e.target.style.background = '#1e3a8a'}>Edit</button>
+                              <button onClick={() => deleteHall(h._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#450a0a'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
                             </td>
                           </tr>
                         ))}
@@ -320,7 +365,7 @@ export default function AdminPage({ token }) {
                                 <option value="faculty">faculty</option>
                                 <option value="admin">admin</option>
                               </select>
-                              <button onClick={() => deleteUser(u._id)} style={{ padding: '0.3rem 0.6rem', background: 'transparent', border: '1px solid #b91c1c', borderRadius: '0.375rem', color: '#fca5a5', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
+                              <button onClick={() => deleteUser(u._id)} style={{ ...deleteBtn, fontSize: '0.75rem' }} onMouseEnter={e => e.target.style.background = '#450a0a'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
                             </div>
                           </td>
                         </tr>
@@ -367,7 +412,7 @@ export default function AdminPage({ token }) {
                           </td>
                           <td style={{ padding: '0.75rem', color: '#475569', fontSize: '0.8rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td style={{ padding: '0.75rem' }}>
-                            <button onClick={() => deleteUser(u._id)} style={{ padding: '0.3rem 0.6rem', background: 'transparent', border: '1px solid #b91c1c', borderRadius: '0.375rem', color: '#fca5a5', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
+                            <button onClick={() => deleteUser(u._id)} style={{ ...deleteBtn, fontSize: '0.75rem' }} onMouseEnter={e => e.target.style.background = '#450a0a'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -408,9 +453,9 @@ export default function AdminPage({ token }) {
                       </label>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <label style={lbl}>Start Time (default: 8PM)
+                      <label style={lbl}>Start Time (default: 8AM)
                         <select style={inp} value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }}>
-                          <option value="">Default (8PM)</option>
+                          <option value="">Default (8AM)</option>
                           {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </label>
@@ -422,7 +467,7 @@ export default function AdminPage({ token }) {
                       </label>
                     </div>
                     <div style={{ padding: '0.75rem', background: '#1e1b4b', border: '1px solid #4338ca', borderRadius: '0.5rem', color: '#a5b4fc', fontSize: '0.85rem' }}>
-                      💡 <b>Bulk Mode:</b> Generates slots for every day between start and end date. Default time: 8PM-10PM (20:00-22:00)
+                      💡 <b>Bulk Mode:</b> Generates slots for every day between start and end date. Default time: 8AM-10PM (08:00-22:00)
                     </div>
                     <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>
                       🚀 Generate Slots
@@ -454,6 +499,46 @@ export default function AdminPage({ token }) {
                 )}
               </div>
 
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <button onClick={() => setShowBulkDelete(!showBulkDelete)}
+                  style={{ padding: '0.6rem 1.5rem', background: showBulkDelete ? 'transparent' : '#450a0a', color: '#fca5a5', border: '1px solid #b91c1c', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
+                  {showBulkDelete ? '✖ Cancel Bulk Delete' : '🗑️ Bulk Delete Slots'}
+                </button>
+              </div>
+
+              {showBulkDelete && (
+                <div style={card}>
+                  <h2 style={{ color: '#fff', marginTop: 0, fontSize: '1rem' }}>🗑️ Bulk Delete Slots</h2>
+                  <form onSubmit={bulkDeleteSlots} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <label style={lbl}>Hall (optional)
+                        <select style={inp} value={deleteHallId} onChange={e => setDeleteHallId(e.target.value)}>
+                          <option value="">All Halls</option>
+                          {halls.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+                        </select>
+                      </label>
+                      <label style={lbl}>Time Slot (optional)
+                        <input style={inp} type="text" value={deleteTimeSlot} onChange={e => setDeleteTimeSlot(e.target.value)} placeholder="e.g. 8AM-12PM" />
+                      </label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <label style={lbl}>Start Date (optional)
+                        <input style={inp} type="date" value={deleteStartDate} onChange={e => setDeleteStartDate(e.target.value)} />
+                      </label>
+                      <label style={lbl}>End Date (optional)
+                        <input style={inp} type="date" value={deleteEndDate} onChange={e => setDeleteEndDate(e.target.value)} />
+                      </label>
+                    </div>
+                    <div style={{ padding: '0.75rem', background: '#450a0a', border: '1px solid #b91c1c', borderRadius: '0.5rem', color: '#fca5a5', fontSize: '0.85rem' }}>
+                      ⚠️ <b>Warning:</b> This will permanently delete all slots matching the selected filters.
+                    </div>
+                    <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>
+                      🗑️ Delete Matching Slots
+                    </button>
+                  </form>
+                </div>
+              )}
+
               <div style={card}>
                 <h2 style={{ color: '#fff', marginTop: 0, fontSize: '1rem' }}>All Slots</h2>
                 {slots.length === 0 ? <p style={{ color: '#475569' }}>No slots yet.</p> : (
@@ -470,7 +555,7 @@ export default function AdminPage({ token }) {
                             <td style={{ padding: '0.75rem', color: '#93c5fd', fontWeight: 600, fontSize: '0.875rem' }}>{s.timeSlot}</td>
                             <td style={{ padding: '0.75rem', color: s.isBooked ? '#fca5a5' : '#86efac', fontWeight: 600, fontSize: '0.85rem' }}>{s.isBooked ? 'Booked' : 'Available'}</td>
                             <td style={{ padding: '0.75rem' }}>
-                              <button onClick={() => deleteSlot(s._id)} style={{ padding: '0.3rem 0.6rem', background: 'transparent', border: '1px solid #b91c1c', borderRadius: '0.375rem', color: '#fca5a5', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
+                              <button onClick={() => deleteSlot(s._id)} style={{ ...deleteBtn, fontSize: '0.75rem' }} onMouseEnter={e => e.target.style.background = '#450a0a'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
                             </td>
                           </tr>
                         ))}

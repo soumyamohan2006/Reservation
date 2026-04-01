@@ -14,7 +14,7 @@ export const createSlot = async (req, res) => {
       
       if (start > end) return res.status(400).json({ message: 'startDate must be before endDate.' })
       
-      const defaultTimeSlot = timeSlot || '8PM-10PM'
+      const defaultTimeSlot = timeSlot || '8AM-10PM'
       const slots = []
       
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -28,8 +28,15 @@ export const createSlot = async (req, res) => {
         }
       }
       
-      const populated = await Slot.find({ _id: { $in: slots.map(s => s._id) } }).populate('hallId', 'name capacity')
-      return res.status(201).json({ message: `Generated ${slots.length} slot(s).`, slots: populated })
+      const hall = await Hall.findById(hallId)
+      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+      const skipped = totalDays - slots.length
+      
+      return res.status(201).json({ 
+        message: `Generated ${slots.length} slot(s) for ${hall?.name || 'hall'} (${startDate} to ${endDate}, ${defaultTimeSlot})${skipped > 0 ? `. Skipped ${skipped} duplicate(s).` : ''}`,
+        count: slots.length,
+        skipped
+      })
     } catch (err) {
       return res.status(500).json({ message: err.message })
     }
@@ -86,6 +93,32 @@ export const deleteSlot = async (req, res) => {
     if (!slot) return res.status(404).json({ message: 'Slot not found.' })
     return res.json({ message: 'Slot deleted.' })
   } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// Bulk delete slots by criteria
+export const bulkDeleteSlots = async (req, res) => {
+  const { hallId, timeSlot, startDate, endDate } = req.body
+  
+  try {
+    const filter = {}
+    if (hallId) filter.hallId = hallId
+    if (timeSlot) filter.timeSlot = timeSlot
+    if (startDate && endDate) {
+      filter.date = { $gte: startDate, $lte: endDate }
+    } else if (startDate) {
+      filter.date = { $gte: startDate }
+    } else if (endDate) {
+      filter.date = { $lte: endDate }
+    }
+    
+    console.log('Bulk delete filter:', filter)
+    const result = await Slot.deleteMany(filter)
+    console.log('Deleted count:', result.deletedCount)
+    return res.json({ message: `Deleted ${result.deletedCount} slot(s).`, count: result.deletedCount })
+  } catch (err) {
+    console.error('Bulk delete error:', err)
     return res.status(500).json({ message: err.message })
   }
 }
