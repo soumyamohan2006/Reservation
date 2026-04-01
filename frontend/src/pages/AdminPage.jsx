@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_URL } from '../config'
 
 const TIME_POINTS = ['6AM','7AM','8AM','9AM','10AM','11AM','12PM','1PM','2PM','3PM','4PM','5PM','6PM','7PM','8PM','9PM','10PM']
 
@@ -51,7 +52,7 @@ export default function AdminPage({ token }) {
   const tk = () => token || localStorage.getItem('token')
   const api = (path, opts = {}) => {
     const { headers, ...rest } = opts
-    return fetch(`http://localhost:4000/api${path}`, {
+    return fetch(`${API_URL}/api${path}`, {
       ...rest,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}`, ...headers },
     })

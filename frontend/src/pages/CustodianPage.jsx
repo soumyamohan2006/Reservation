@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_URL } from '../config'
 
 const TABS = ['Requests', 'Schedule', 'Mark Unavailable', 'History']
 
@@ -50,7 +51,7 @@ export default function CustodianPage({ token, user }) {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/bookings/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
+      const res = await fetch(`${API_URL}/api/bookings/custodian`, { headers: { Authorization: `Bearer ${tk()}` } })
       const data = await res.json()
       if (res.ok) setBookings(data)
     } catch {}
@@ -58,7 +59,7 @@ export default function CustodianPage({ token, user }) {
 
   const fetchSlots = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/slots/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
+      const res = await fetch(`${API_URL}/api/slots/custodian`, { headers: { Authorization: `Bearer ${tk()}` } })
       const data = await res.json()
       if (res.ok) setSlots(data)
     } catch {}
@@ -66,7 +67,7 @@ export default function CustodianPage({ token, user }) {
 
   const fetchHalls = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/halls/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
+      const res = await fetch(`${API_URL}/api/halls/custodian`, { headers: { Authorization: `Bearer ${tk()}` } })
       const data = await res.json()
       if (Array.isArray(data)) setHalls(data)
     } catch {}
@@ -75,7 +76,7 @@ export default function CustodianPage({ token, user }) {
   const updateStatus = async (id, status) => {
     setMsg('')
     try {
-      const res = await fetch(`http://localhost:4000/api/bookings/${id}`, {
+      const res = await fetch(`${API_URL}/api/bookings/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
         body: JSON.stringify({ status }),
@@ -91,7 +92,7 @@ export default function CustodianPage({ token, user }) {
     if (!hallId || !date || !startTime || !endTime) { setSlotMsg('All fields are required.'); return }
     setSlotMsg('')
     try {
-      const res = await fetch('http://localhost:4000/api/slots', {
+      const res = await fetch(`${API_URL}/api/slots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
         body: JSON.stringify({ hallId, date, timeSlot: `${startTime}-${endTime}`, isBooked: true }),
@@ -104,7 +105,7 @@ export default function CustodianPage({ token, user }) {
 
   const deleteSlot = async (id) => {
     try {
-      await fetch(`http://localhost:4000/api/slots/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
+      await fetch(`${API_URL}/api/slots/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
       fetchSlots()
     } catch {}
   }
