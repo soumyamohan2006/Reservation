@@ -1,3 +1,6 @@
+MERGE THE CODE IN PR https://github.com/soumyamohan2006/Reservation/pull/1
+
+
 # Reservation App
 
 Frontend: React + Vite (`/frontend`)  
