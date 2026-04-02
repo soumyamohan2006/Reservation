@@ -45,7 +45,7 @@ function AdminLoginPage({ setUser, setToken, setRole }) {
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🏛️</div>
-          <h1 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Admin Portal</h1>
+          <h1 style={{ color: '#000000', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Admin Portal</h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.4rem' }}>Sign in with your admin or custodian account</p>
         </div>
 
