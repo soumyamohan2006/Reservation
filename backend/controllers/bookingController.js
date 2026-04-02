@@ -185,34 +185,58 @@ export const updateBookingStatus = async (req, res) => {
       try {
         const slot = await Slot.findById(booking.slotId)
         const msgTime = (booking.message || '').split('|').pop().replace('Time needed:', '').trim()
-        const timeMatch = msgTime.match(/([\d:]+(?:AM|PM)?)\s*[–-]\s*([\d:]+(?:AM|PM)?)/i)
+
+        const toMin = (t) => {
+          if (!t) return 0
+          t = t.trim()
+          // HH:MM 24hr format from <input type="time">
+          if (/^\d{1,2}:\d{2}$/.test(t)) {
+            const [h, m] = t.split(':').map(Number)
+            return h * 60 + m
+          }
+          // 8AM / 10PM format
+          const mt = t.match(/^(\d+)(?::(\d+))?(AM|PM)$/i)
+          if (!mt) return 0
+          let h = parseInt(mt[1]), m = parseInt(mt[2] || 0)
+          const p = mt[3].toUpperCase()
+          if (p === 'PM' && h !== 12) h += 12
+          if (p === 'AM' && h === 12) h = 0
+          return h * 60 + m
+        }
+
+        const toLabel = (min) => {
+          let h = Math.floor(min / 60), m = min % 60
+          const p = h >= 12 ? 'PM' : 'AM'
+          if (h > 12) h -= 12
+          if (h === 0) h = 12
+          return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2, '0')}${p}`
+        }
+
+        // Match both HH:MM and 8AM/10PM formats
+        const timeMatch = msgTime.match(/([\d]{1,2}(?::\d{2})?(?:AM|PM)?)\s*[–\-]\s*([\d]{1,2}(?::\d{2})?(?:AM|PM)?)/i)
+
         if (slot && timeMatch) {
-          const toMin = (t) => {
-            if (!t) return 0
-            if (t.includes(':')) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
-            const mt = t.match(/^(\d+)(AM|PM)$/i); if (!mt) return 0
-            let h = parseInt(mt[1]); const p = mt[2].toUpperCase()
-            if (p === 'PM' && h !== 12) h += 12; if (p === 'AM' && h === 12) h = 0
-            return h * 60
-          }
-          const toLabel = (min) => {
-            let h = Math.floor(min / 60), m = min % 60
-            const p = h >= 12 ? 'PM' : 'AM'
-            if (h > 12) h -= 12; if (h === 0) h = 12
-            return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2,'0')}${p}`
-          }
           const [slotS, slotE] = slot.timeSlot.split('-')
-          const slotStart = toMin(slotS), slotEnd = toMin(slotE)
-          const bookedStart = toMin(timeMatch[1]), bookedEnd = toMin(timeMatch[2])
-          // Before booked time
+          const slotStart = toMin(slotS)
+          const slotEnd = toMin(slotE)
+          const bookedStart = toMin(timeMatch[1])
+          const bookedEnd = toMin(timeMatch[2])
+
           if (bookedStart > slotStart) {
             const ts = `${toLabel(slotStart)}-${toLabel(bookedStart)}`
-            await Slot.findOneAndUpdate({ hallId: slot.hallId, date: slot.date, timeSlot: ts }, { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false }, { upsert: true, new: true })
+            await Slot.findOneAndUpdate(
+              { hallId: slot.hallId, date: slot.date, timeSlot: ts },
+              { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            )
           }
-          // After booked time
           if (bookedEnd < slotEnd) {
             const ts = `${toLabel(bookedEnd)}-${toLabel(slotEnd)}`
-            await Slot.findOneAndUpdate({ hallId: slot.hallId, date: slot.date, timeSlot: ts }, { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false }, { upsert: true, new: true })
+            await Slot.findOneAndUpdate(
+              { hallId: slot.hallId, date: slot.date, timeSlot: ts },
+              { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            )
           }
         }
       } catch (splitErr) {
