@@ -63,7 +63,8 @@ function App() {
       <header className={`top-header ${isLightLayout ? 'top-header-light' : ''}`}>
         <nav className="nav-bar">
           <Link to="/" className="brand">
-            Campus Space Reservation
+            <span className="brand-logo">CS</span>
+            Campus Spaces
           </Link>
 
           {user ? (
@@ -135,10 +136,7 @@ function App() {
                 &times;
               </button>
             </div>
-            <span>
-              Your request to reserve the Main Auditorium has been submitted successfully. Approval
-              from the administration is pending.
-            </span>
+            <span>{headerNotice}</span>
           </div>
         )}
       </header>

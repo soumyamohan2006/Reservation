@@ -4,6 +4,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --color-foreground: #1e293b;
+  --color-background: #f8fafc;
+  --color-muted: #64748b;
+  --color-primary: #3b82f6;
+  --color-border: #cbd5e1;
 }
 
 *,
@@ -15,4 +21,6 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--color-background);
+  color: var(--color-foreground);
 }

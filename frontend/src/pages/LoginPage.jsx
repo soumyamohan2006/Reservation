@@ -9,9 +9,11 @@ function LoginPage({ setUser, setToken, setRole }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const onSubmit = async (event) => {
     event.preventDefault()
+    setLoading(true)
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
@@ -29,6 +31,8 @@ function LoginPage({ setUser, setToken, setRole }) {
       navigate(hallId ? `/reserve/${hallId}` : '/')
     } catch {
       setError('Server error. Is the backend running?')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -73,8 +77,8 @@ function LoginPage({ setUser, setToken, setRole }) {
 
           {error && <p style={{ color: 'red', fontSize: '0.875rem' }}>{error}</p>}
 
-          <button type="submit" className="btn btn-primary login-submit">
-            Login
+          <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
+            {loading ? 'Please wait...' : 'Login'}
           </button>
         </form>
 

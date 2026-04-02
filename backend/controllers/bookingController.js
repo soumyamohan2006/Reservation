@@ -180,6 +180,44 @@ export const updateBookingStatus = async (req, res) => {
 
     if (status === 'Approved') {
       await Slot.findByIdAndUpdate(booking.slotId, { isBooked: true })
+
+      // Split remaining time into new available slot(s)
+      try {
+        const slot = await Slot.findById(booking.slotId)
+        const msgTime = (booking.message || '').split('|').pop().replace('Time needed:', '').trim()
+        const timeMatch = msgTime.match(/([\d:]+(?:AM|PM)?)\s*[–-]\s*([\d:]+(?:AM|PM)?)/i)
+        if (slot && timeMatch) {
+          const toMin = (t) => {
+            if (!t) return 0
+            if (t.includes(':')) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+            const mt = t.match(/^(\d+)(AM|PM)$/i); if (!mt) return 0
+            let h = parseInt(mt[1]); const p = mt[2].toUpperCase()
+            if (p === 'PM' && h !== 12) h += 12; if (p === 'AM' && h === 12) h = 0
+            return h * 60
+          }
+          const toLabel = (min) => {
+            let h = Math.floor(min / 60), m = min % 60
+            const p = h >= 12 ? 'PM' : 'AM'
+            if (h > 12) h -= 12; if (h === 0) h = 12
+            return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2,'0')}${p}`
+          }
+          const [slotS, slotE] = slot.timeSlot.split('-')
+          const slotStart = toMin(slotS), slotEnd = toMin(slotE)
+          const bookedStart = toMin(timeMatch[1]), bookedEnd = toMin(timeMatch[2])
+          // Before booked time
+          if (bookedStart > slotStart) {
+            const ts = `${toLabel(slotStart)}-${toLabel(bookedStart)}`
+            await Slot.findOneAndUpdate({ hallId: slot.hallId, date: slot.date, timeSlot: ts }, { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false }, { upsert: true, new: true })
+          }
+          // After booked time
+          if (bookedEnd < slotEnd) {
+            const ts = `${toLabel(bookedEnd)}-${toLabel(slotEnd)}`
+            await Slot.findOneAndUpdate({ hallId: slot.hallId, date: slot.date, timeSlot: ts }, { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false }, { upsert: true, new: true })
+          }
+        }
+      } catch (splitErr) {
+        console.error('Slot split error:', splitErr.message)
+      }
       const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
       
       try {

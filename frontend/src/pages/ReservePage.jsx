@@ -97,7 +97,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       setNeededStart('')
       setNeededEnd('')
       setTimeError('')
-      setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting admin approval.`)
+      setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting approval.`)
       fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(r => r.json()).then(d => setAvailableSlots(Array.isArray(d) ? d : []))
@@ -127,8 +127,8 @@ function ReservePage({ halls, setHeaderNotice, token }) {
   return (
     <main className="booking-page" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
       <section className="booking-card">
-        <h1 className="booking-title">Book {hall.name}</h1>
-        <p className="booking-subtitle">Fill in your details, pick a date and select an available slot.</p>
+        <h1 className="booking-title" style={{ color: '#000000' }}>Book {hall.name}</h1>
+        <p className="booking-subtitle" style={{ color: '#475569' }}>Fill in your details, pick a date and select an available slot.</p>
 
         <form className="booking-form" onSubmit={(e) => e.preventDefault()}>
           <div className="booking-two-col">
@@ -150,14 +150,14 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       </section>
 
       {date && (
-        <section className="booking-card" style={{ marginTop: '2rem', background: 'linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%)', border: '1px solid rgba(124, 58, 237, 0.3)' }}>
-          <h2 className="booking-title" style={{ color: '#ffffff', margin: '0 0 0.25rem' }}>Available Slots</h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.25rem' }}>{date} • {hall.name}</p>
+        <section className="booking-card" style={{ marginTop: '2rem' }}>
+          <h2 className="booking-title" style={{ color: '#000000', margin: '0 0 0.25rem' }}>Available Slots</h2>
+          <p style={{ color: '#475569', fontSize: '0.875rem', margin: '0 0 1.25rem' }}>{date} • {hall.name}</p>
 
           {loadingSlots ? (
-            <p style={{ color: '#cbd5e1' }}>Loading slots...</p>
+            <p style={{ color: '#475569' }}>Loading slots...</p>
           ) : availableSlots.length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No available slots for this date. Try another date.</p>
+            <p style={{ color: '#475569' }}>No available slots for this date. Try another date.</p>
           ) : (
             <div style={{ display: 'grid', gap: '0.6rem' }}>
               {availableSlots.map((slot) => {
@@ -171,8 +171,8 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '0.9rem 1rem',
-                        background: selected ? '#e0e7ff' : '#ffffff',
-                        border: selected ? '2px solid #6d28d9' : '1px solid #cbd5e1',
+                        background: selected ? '#dbeafe' : '#ffffff',
+                        border: selected ? '2px solid #2563eb' : '1px solid #cbd5e1',
                         borderRadius: selected ? '0.5rem 0.5rem 0 0' : '0.5rem',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -181,56 +181,56 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
                           width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0,
-                          border: selected ? '2px solid #6d28d9' : '2px solid #cbd5e1',
-                          background: selected ? '#6d28d9' : 'transparent',
+                          border: selected ? '2px solid #2563eb' : '2px solid #cbd5e1',
+                          background: selected ? '#2563eb' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           color: selected ? 'white' : '#475569', fontSize: '0.7rem', fontWeight: 'bold',
                         }}>
                           {selected && '✓'}
                         </div>
-                        <span style={{ color: '#0f172a', fontSize: '1rem', fontWeight: 600 }}>
+                        <span style={{ color: '#000000', fontSize: '1rem', fontWeight: 600 }}>
                           {slot.timeSlot}
                         </span>
                       </div>
                       {selected && (
-                        <span style={{ color: '#6d28d9', fontSize: '0.8rem', fontWeight: 600 }}>SELECTED</span>
+                        <span style={{ color: '#2563eb', fontSize: '0.8rem', fontWeight: 600 }}>SELECTED</span>
                       )}
                     </div>
 
                     {selected && (
                       <div style={{
                         padding: '1rem',
-                        background: '#161b22',
-                        border: '2px solid #6d28d9',
+                        background: '#f8fafc',
+                        border: '2px solid #2563eb',
                         borderTop: 'none',
                         borderRadius: '0 0 0.5rem 0.5rem',
                       }}>
-                        <p style={{ color: '#93c5fd', fontSize: '0.82rem', fontWeight: 600, margin: '0 0 0.75rem' }}>
-                          Enter the exact time you need within <span style={{ color: '#fff' }}>{slot.timeSlot}</span>
+                        <p style={{ color: '#1e293b', fontSize: '0.82rem', fontWeight: 600, margin: '0 0 0.75rem' }}>
+                          Enter the exact time you need within <span style={{ color: '#000000' }}>{slot.timeSlot}</span>
                         </p>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}>
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#1e293b', fontSize: '0.82rem', fontWeight: 600 }}>
                             Start Time
                             <input
                               type="time"
                               value={neededStart}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => { setNeededStart(e.target.value); setTimeError('') }}
-                              style={{ padding: '0.5rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '0.375rem', color: '#fff', fontSize: '0.9rem' }}
+                              style={{ padding: '0.5rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#000000', fontSize: '0.9rem' }}
                             />
                           </label>
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}>
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#1e293b', fontSize: '0.82rem', fontWeight: 600 }}>
                             End Time
                             <input
                               type="time"
                               value={neededEnd}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => { setNeededEnd(e.target.value); setTimeError('') }}
-                              style={{ padding: '0.5rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '0.375rem', color: '#fff', fontSize: '0.9rem' }}
+                              style={{ padding: '0.5rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#000000', fontSize: '0.9rem' }}
                             />
                           </label>
                         </div>
-                        {timeError && <p style={{ color: '#fca5a5', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{timeError}</p>}
+                        {timeError && <p style={{ color: '#b91c1c', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{timeError}</p>}
                       </div>
                     )}
                   </div>
