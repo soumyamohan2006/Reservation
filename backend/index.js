@@ -66,7 +66,6 @@ app.get('/api/booking-action/:id', async (req, res) => {
       try {
         const slot = await Slot.findById(booking.slotId)
         const msgTime = (booking.message || '').split('|').pop().replace('Time needed:', '').trim()
-
         const toMin = (t) => {
           if (!t) return 0
           t = t.trim()
@@ -81,10 +80,8 @@ app.get('/api/booking-action/:id', async (req, res) => {
           if (h > 12) h -= 12; if (h === 0) h = 12
           return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2, '0')}${p}`
         }
-
         const slotParts = slot.timeSlot.match(/^(.+?)-(.+)$/)
         const timeMatch = msgTime.match(/(\d{1,2}(?::\d{2})?(?:AM|PM)?)\s*[\u2013\-]\s*(\d{1,2}(?::\d{2})?(?:AM|PM)?)/i)
-
         if (slot && slotParts && timeMatch) {
           const slotStart = toMin(slotParts[1]), slotEnd = toMin(slotParts[2])
           const bookedStart = toMin(timeMatch[1]), bookedEnd = toMin(timeMatch[2])
@@ -100,6 +97,8 @@ app.get('/api/booking-action/:id', async (req, res) => {
       } catch (splitErr) {
         console.error('Slot split error:', splitErr.message)
       }
+
+      sendMail({
         to: booking.userId.email,
         subject: 'Your Hall Booking Has Been Approved',
         html: `
