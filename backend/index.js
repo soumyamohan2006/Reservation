@@ -101,14 +101,44 @@ app.get('/api/booking-action/:id', async (req, res) => {
       sendMail({
         to: booking.userId.email,
         subject: 'Your Hall Booking Has Been Approved',
-        html: `
-          <h3>Booking Approved!</h3>
-          <p>Hi ${booking.userId.name},</p>
-          <p>Your booking has been <b>approved</b> by the custodian.</p>
-          <p><b>Hall:</b> ${booking.hallId?.name}</p>
-          <p><b>Date:</b> ${booking.slotId?.date}</p>
-          <p><b>Time Slot:</b> ${booking.slotId?.timeSlot}</p>
-        `,
+        html: (() => {
+          const bookingRef2 = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+          const [msgEvent2, msgTimeNeeded2] = (booking.message || '').split('|').map(s => s.trim())
+          const exactTime2 = msgTimeNeeded2 ? msgTimeNeeded2.replace('Time needed:', '').trim() : booking.slotId?.timeSlot
+          return `
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+              <div style="background:#16a34a;padding:1.25rem 1.5rem">
+                <h2 style="color:#fff;margin:0;font-size:1.1rem">✅ Booking Approved!</h2>
+              </div>
+              <div style="padding:1.5rem">
+                <div style="display:inline-block;background:#f0fdf4;border:1px solid #86efac;border-radius:0.5rem;padding:0.6rem 1rem;margin-bottom:1.25rem">
+                  <span style="color:#64748b;font-size:0.75rem;font-weight:600;display:block">BOOKING ID</span>
+                  <span style="color:#16a34a;font-size:1.3rem;font-weight:800;letter-spacing:0.05em">${bookingRef2}</span>
+                </div>
+                <p style="color:#1e293b;margin:0 0 1.25rem">Hi <b>${booking.userId.name}</b>, your booking has been <b style="color:#16a34a">approved</b> by the custodian.</p>
+                <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b;width:40%">Hall</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${booking.hallId?.name}</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b">Date</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${booking.slotId?.date}</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b">Event</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent2 || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0.55rem 0;color:#64748b">Time Needed</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${exactTime2}</td>
+                  </tr>
+                </table>
+                <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem">Booking ID ${bookingRef2} · Campus Hall Booking System</p>
+              </div>
+            </div>
+          `
+        })(),
       }).catch(err => console.error('Approval email error:', err.message))
     }
 

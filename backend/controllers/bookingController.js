@@ -247,26 +247,44 @@ export const updateBookingStatus = async (req, res) => {
       } catch (splitErr) {
         console.error('Slot split error:', splitErr.message)
       }
-      const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
-      
-      try {
+        const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+        const [msgEvent, msgTimeNeeded] = (booking.message || '').split('|').map(s => s.trim())
+        const exactTime = msgTimeNeeded ? msgTimeNeeded.replace('Time needed:', '').trim() : booking.slotId?.timeSlot
+        try {
         await sendMail({
           to: booking.userId.email,
           subject: `Your Booking ${bookingRef} Has Been Approved`,
           html: `
-            <div style="font-family:sans-serif;max-width:540px;margin:auto;background:#0f172a;color:#e2e8f0;padding:2rem;border-radius:0.75rem">
-              <h2 style="color:#16a34a;margin-top:0">✅ Booking Approved!</h2>
-              <div style="background:#1e293b;border:1px solid #334155;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.25rem;display:inline-block">
-                <span style="color:#94a3b8;font-size:0.8rem;font-weight:600">BOOKING ID</span><br/>
-                <span style="color:#60a5fa;font-size:1.4rem;font-weight:800;letter-spacing:0.05em">${bookingRef}</span>
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+              <div style="background:#16a34a;padding:1.25rem 1.5rem">
+                <h2 style="color:#fff;margin:0;font-size:1.1rem">✅ Booking Approved!</h2>
               </div>
-              <p>Hi <b>${booking.userId.name}</b>, your booking has been <b style="color:#86efac">approved</b> by the custodian.</p>
-              <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
-                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem;width:40%">Hall</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.hallId?.name}</td></tr>
-                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Date</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.date}</td></tr>
-                <tr><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Time Slot</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.timeSlot}</td></tr>
-              </table>
-              <p style="color:#475569;font-size:0.75rem;margin-top:1rem">Booking ID ${bookingRef} · Campus Hall Booking System</p>
+              <div style="padding:1.5rem">
+                <div style="display:inline-block;background:#f0fdf4;border:1px solid #86efac;border-radius:0.5rem;padding:0.6rem 1rem;margin-bottom:1.25rem">
+                  <span style="color:#64748b;font-size:0.75rem;font-weight:600;display:block">BOOKING ID</span>
+                  <span style="color:#16a34a;font-size:1.3rem;font-weight:800;letter-spacing:0.05em">${bookingRef}</span>
+                </div>
+                <p style="color:#1e293b;margin:0 0 1.25rem">Hi <b>${booking.userId.name}</b>, your booking has been <b style="color:#16a34a">approved</b> by the custodian.</p>
+                <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b;width:40%">Hall</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${booking.hallId?.name}</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b">Date</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${booking.slotId?.date}</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:0.55rem 0;color:#64748b">Event</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0.55rem 0;color:#64748b">Time Needed</td>
+                    <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${exactTime}</td>
+                  </tr>
+                </table>
+                <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem">Booking ID ${bookingRef} · Campus Hall Booking System</p>
+              </div>
             </div>
           `,
         })
