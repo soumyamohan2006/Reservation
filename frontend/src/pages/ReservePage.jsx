@@ -173,7 +173,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       </section>
 
       {date && (
-        <section className="booking-card" style={{ marginTop: '2rem' }}>
+        <section className="booking-card" style={{ marginTop: '1rem' }}>
           <h2 className="booking-title" style={{ color: '#000000', margin: '0 0 0.25rem' }}>Available Slots</h2>
           <p style={{ color: '#475569', fontSize: '0.875rem', margin: '0 0 1.25rem' }}>{date} • {hall.name}</p>
 
