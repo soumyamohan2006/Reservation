@@ -1,174 +1,176 @@
 import React, { useState } from 'react'
-import { User, Shield, Bell, CreditCard, ArrowRight, Lock, KeyRound, Globe, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { User, KeyRound, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import api from '../services/api'
 
 function ProfilePage({ user, role }) {
-  // Use placeholder image if none exists
-  const defaultImage = "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=400&ixlib=rb-4.0.3"
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdSuccess, setPwdSuccess] = useState('')
+  const [pwdError, setPwdError] = useState('')
 
-  const [activeTab, setActiveTab] = useState('personal')
+  const handlePasswordChange = async (e) => {
+    e.preventDefault()
+    setPwdError('')
+    setPwdSuccess('')
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPwdError('All fields are required.'); return
+    }
+    if (newPassword.length < 6) {
+      setPwdError('New password must be at least 6 characters.'); return
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError('New passwords do not match.'); return
+    }
+
+    setPwdLoading(true)
+    try {
+      await api.changePassword({ currentPassword, newPassword })
+      setPwdSuccess('Password updated successfully.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      setPwdError(err?.data?.message || 'Failed to update password. Please check your current password.')
+    } finally {
+      setPwdLoading(false)
+    }
+  }
+
+  const roleLabel = role === 'admin' ? 'Administrator' : role === 'custodian' ? 'Facilities Manager' : role === 'faculty' ? 'Faculty Member' : 'Student Member'
 
   return (
-    <div className="flex flex-col w-full px-6 md:px-12 max-w-6xl mx-auto pb-32 pt-12 relative">
-      <header className="mb-16">
-        <h1 className="font-headline text-5xl md:text-6xl text-white mb-4 tracking-tight">Account Settings</h1>
-        <p className="text-slate-400 max-w-xl text-lg leading-relaxed font-light">
-          Manage your executive preferences and secure your profile. Your information is encrypted and handled by your dedicated concierge team.
-        </p>
-      </header>
+    <div className="max-w-3xl mx-auto px-6 pb-32 pt-8 w-full">
+      {/* Header */}
+      <div className="mb-10">
+        <p className="text-primary text-xs uppercase tracking-widest font-bold mb-2">Account</p>
+        <h1 className="font-headline text-4xl md:text-5xl text-white mb-3">Profile</h1>
+        <p className="text-slate-400 font-light">Manage your account settings and security preferences.</p>
+      </div>
 
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        {/* Side Navigation / Information */}
-        <aside className="lg:col-span-4 space-y-8">
-          <div className="p-8 rounded-xl bg-surface-container-low border border-white/5 shadow-xl shadow-black/20">
-            <div className="flex items-center space-x-4 mb-8">
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-primary/20">
-                <img alt="User Profile" className="w-full h-full object-cover" src={defaultImage} />
-              </div>
-              <div>
-                <p className="font-headline text-2xl text-white">{user || 'Guest User'}</p>
-                <p className="text-[10px] tracking-widest uppercase text-primary font-bold">{role === 'admin' ? 'Administrator' : role === 'custodian' ? 'Facilities Manager' : 'Private Member'}</p>
-              </div>
-            </div>
-            
-            <nav className="space-y-2">
-              <button 
-                onClick={() => setActiveTab('personal')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium ${activeTab === 'personal' ? 'bg-surface-container-highest text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <User size={18} />
-                <span className="text-sm">Personal Information</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('security')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium ${activeTab === 'security' ? 'bg-surface-container-highest text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <Shield size={18} />
-                <span className="text-sm">Security & Access</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('preferences')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium ${activeTab === 'preferences' ? 'bg-surface-container-highest text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <Bell size={18} />
-                <span className="text-sm">Preferences</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('billing')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium ${activeTab === 'billing' ? 'bg-surface-container-highest text-primary' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <CreditCard size={18} />
-                <span className="text-sm">Billing Details</span>
-              </button>
-            </nav>
+      {/* Identity card */}
+      <div className="glass-panel rim-light rounded-2xl p-8 border border-white/5 mb-6">
+        <div className="flex items-center gap-5 mb-8">
+          <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/20 flex items-center justify-center flex-shrink-0">
+            <User size={28} className="text-primary" strokeWidth={1.5} />
           </div>
-          
-          <div className="p-8 rounded-xl glass-panel rim-light space-y-4 border border-white/5">
-            <h3 className="text-primary font-headline text-2xl italic">Concierge Support</h3>
-            <p className="text-sm text-slate-400 leading-relaxed font-light">Need assistance updating your legal documentation or corporate entity details?</p>
-            <button className="text-white text-xs font-bold tracking-widest uppercase flex items-center space-x-2 group hover:text-primary transition-colors pt-2">
-              <span>Contact Agent</span>
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Form Canvas */}
-        <div className="lg:col-span-8 space-y-8">
-          <div className="glass-panel rim-light rounded-2xl overflow-hidden shadow-2xl border border-white/5">
-            <div className="p-10 space-y-12">
-              
-              {/* Personal Details Form Section */}
-              <div className="space-y-6">
-                <h2 className="font-headline text-3xl text-white">Personal Details</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-2 relative">
-                    <label className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-500 ml-1">Account Owner</label>
-                    <input 
-                      readOnly 
-                      className="w-full bg-surface-container-lowest border border-white/5 rounded-xl py-4 px-5 text-white focus:ring-2 focus:ring-primary/50 transition-all outline-none" 
-                      type="text" 
-                      value={user || ''} 
-                    />
-                    <Lock size={14} className="absolute right-5 bottom-4 text-slate-600" />
-                  </div>
-                  <div className="space-y-2 relative">
-                    <label className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-500 ml-1">Email Address</label>
-                    <input 
-                      className="w-full bg-surface-container-low border border-white/5 rounded-xl py-4 px-5 text-white focus:ring-2 focus:ring-primary/50 transition-all outline-none" 
-                      type="email" 
-                      defaultValue={`${user || 'guest'}@obsidianspaces.com`} 
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-500 ml-1">Phone Number</label>
-                    <input 
-                      className="w-full bg-surface-container-low border border-white/5 rounded-xl py-4 px-5 text-white focus:ring-2 focus:ring-primary/50 transition-all outline-none placeholder:text-slate-600" 
-                      type="tel" 
-                      placeholder="+1 (555) 000-0000" 
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="h-px bg-white/5 w-full"></div>
-              
-              {/* Security Section */}
-              <div className="space-y-6">
-                <h2 className="font-headline text-3xl text-white">Security</h2>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-xl bg-surface-container-lowest/50 border border-white/5">
-                  <div className="flex items-start space-x-4">
-                    <div className="p-3 bg-primary/10 rounded-xl text-primary">
-                      <KeyRound size={20} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-white font-medium">Access Password</p>
-                      <p className="text-xs text-slate-500 mt-1 font-light">Last changed during account creation</p>
-                    </div>
-                  </div>
-                  <button className="px-6 py-2.5 rounded-full border border-white/10 text-sm font-bold hover:bg-white/5 transition-all duration-300 text-white">
-                    Change Password
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Action Footer */}
-            <div className="px-10 py-8 bg-surface-container flex flex-col md:flex-row items-center justify-between gap-6 border-t border-white/5">
-              <p className="text-xs text-slate-500 italic max-w-sm">Changes made here will be synchronized across all Obsidian platforms.</p>
-              <div className="flex items-center space-x-4 w-full md:w-auto">
-                <button className="w-full md:w-auto px-8 py-3 bg-primary text-on-primary-fixed font-bold rounded-full text-sm hover:brightness-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(173,198,255,0.2)]">
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Footer Meta */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-2">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Identity Verified</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Globe size={14} className="text-slate-500" />
-                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current Node: Secure</span>
-              </div>
-            </div>
-            
-            <button className="text-xs text-red-400/80 hover:text-red-400 transition-colors flex items-center space-x-1 group">
-              <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
-              <span className="font-bold uppercase tracking-wider">Deactivate Account</span>
-            </button>
+          <div>
+            <h2 className="text-white font-headline text-2xl">{user || 'User'}</h2>
+            <p className="text-primary text-xs uppercase tracking-widest font-bold mt-1">{roleLabel}</p>
           </div>
         </div>
-      </section>
+
+        <div className="space-y-5">
+          <div>
+            <label className="text-xs font-bold tracking-widest uppercase text-slate-500 block mb-2">Display Name</label>
+            <div className="relative">
+              <input
+                readOnly
+                value={user || ''}
+                className="w-full bg-white/3 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm outline-none cursor-not-allowed"
+              />
+              <Lock size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
+            </div>
+            <p className="text-slate-600 text-xs mt-1.5">Contact an administrator to update your name.</p>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold tracking-widest uppercase text-slate-500 block mb-2">Role</label>
+            <div className="flex items-center gap-3 px-4 py-3.5 bg-white/3 border border-white/10 rounded-xl">
+              <span className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold ${
+                role === 'admin' ? 'bg-blue-500/20 text-blue-400' :
+                role === 'custodian' ? 'bg-indigo-500/20 text-indigo-400' :
+                role === 'faculty' ? 'bg-emerald-500/20 text-emerald-400' :
+                'bg-slate-500/20 text-slate-400'
+              }`}>
+                {role || 'student'}
+              </span>
+              <span className="text-slate-500 text-sm">{roleLabel}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Change password card */}
+      <div className="glass-panel rim-light rounded-2xl p-8 border border-white/5">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <KeyRound size={18} className="text-primary" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Change Password</h2>
+            <p className="text-slate-500 text-xs mt-0.5">Update your login credentials securely.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold tracking-widest uppercase text-slate-500 block mb-2">Current Password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 text-sm focus:border-primary/50 focus:bg-primary/5 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold tracking-widest uppercase text-slate-500 block mb-2">New Password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 text-sm focus:border-primary/50 focus:bg-primary/5 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold tracking-widest uppercase text-slate-500 block mb-2">Confirm New Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 text-sm focus:border-primary/50 focus:bg-primary/5 outline-none transition-all"
+            />
+          </div>
+
+          {pwdError && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0" />
+              {pwdError}
+            </div>
+          )}
+          {pwdSuccess && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-sm">
+              <CheckCircle2 size={15} className="flex-shrink-0" />
+              {pwdSuccess}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={pwdLoading}
+            className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              pwdLoading
+                ? 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/10'
+                : 'bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 shadow-[0_0_20px_rgba(77,142,255,0.1)]'
+            }`}
+          >
+            {pwdLoading ? <><Loader2 size={16} className="animate-spin" /> Updating…</> : 'Update Password'}
+          </button>
+
+          <p className="text-center text-slate-500 text-xs mt-4">
+            Forgot your password?{' '}
+            <Link to="/forgot-password" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+              Reset it here
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   )
 }

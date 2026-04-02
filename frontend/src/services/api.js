@@ -40,11 +40,14 @@ export const api = {
   adminLogin: (credentials) => fetcher('/api/auth/admin-login', { method: 'POST', body: JSON.stringify(credentials) }),
   custodianLogin: (credentials) => fetcher('/api/auth/custodian-login', { method: 'POST', body: JSON.stringify(credentials) }),
   setPassword: (passwordData) => fetcher('/api/auth/set-password', { method: 'POST', body: JSON.stringify(passwordData) }),
+  forgotPassword: (email) => fetcher('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (data) => fetcher('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   
   getUsers: () => fetcher('/api/users'),
   deleteUser: (id) => fetcher(`/api/users/${id}`, { method: 'DELETE' }),
   changeUserRole: (id, role) => fetcher(`/api/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   createCustodian: (data) => fetcher('/api/users/custodian', { method: 'POST', body: JSON.stringify(data) }),
+  changePassword: (data) => fetcher('/api/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
 
   // --- Halls ---
   getHalls: () => fetcher('/api/halls'),
@@ -54,7 +57,7 @@ export const api = {
   deleteHall: (id) => fetcher(`/api/halls/${id}`, { method: 'DELETE' }),
 
   // --- Slots ---
-  getAvailableSlots: (hallId, date) => fetcher(`/api/slots?hallId=${hallId}&date=${date}`),
+  getAvailableSlots: (hallId, date) => fetcher(`/api/slots/available?hallId=${hallId}&date=${date}`),
   getAllSlots: () => fetcher('/api/slots'),
   getCustodianSlots: () => fetcher('/api/slots/custodian'),
   createSlot: (slotData) => fetcher('/api/slots', { method: 'POST', body: JSON.stringify(slotData) }),
@@ -63,9 +66,17 @@ export const api = {
   // --- Bookings ---
   getMyBookings: () => fetcher('/api/bookings/my-bookings'),
   createBooking: (bookingData) => fetcher('/api/bookings', { method: 'POST', body: JSON.stringify(bookingData) }),
+  cancelBooking: (id) => fetcher(`/api/bookings/${id}`, { method: 'DELETE' }),
   getGlobalBookings: (hallId) => fetcher(`/api/bookings${hallId ? `?hallId=${hallId}` : ''}`),
   getCustodianBookings: () => fetcher('/api/bookings/custodian-bookings'),
-  updateBookingStatus: (id, status) => fetcher(`/api/bookings/${id}`, { method: 'PUT', body: JSON.stringify({ status }) })
+  updateBookingStatus: (id, status) => fetcher(`/api/bookings/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
+  // --- Notifications ---
+  getNotifications: () => fetcher('/api/notifications'),
+  getUnreadCount: () => fetcher('/api/notifications/unread/count'),
+  markNotificationAsRead: (id) => fetcher(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsAsRead: () => fetcher('/api/notifications/read-all', { method: 'PATCH' }),
+  deleteNotification: (id) => fetcher(`/api/notifications/${id}`, { method: 'DELETE' })
 }
 
 export default api;

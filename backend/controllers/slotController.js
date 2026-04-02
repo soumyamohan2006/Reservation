@@ -1,8 +1,22 @@
 import Slot from '../models/Slot.js'
 import Hall from '../models/Hall.js'
 
+const canManageHall = async (hallId, user) => {
+  if (user.role === 'admin') return true
+
+  const hall = await Hall.findOne({ _id: hallId, custodianId: user.id })
+  return !!hall
+}
+
 export const createSlot = async (req, res) => {
   const { hallId, date, timeSlot, isBooked, startDate, endDate } = req.body
+
+  if (req.user.role === 'custodian') {
+    const allowed = await canManageHall(hallId, req.user)
+    if (!allowed) {
+      return res.status(403).json({ message: 'Access denied for this hall.' })
+    }
+  }
   
   // Bulk generation mode: startDate + endDate
   if (startDate && endDate) {
@@ -89,8 +103,18 @@ export const getAvailableSlots = async (req, res) => {
 
 export const deleteSlot = async (req, res) => {
   try {
+    if (req.user.role === 'custodian') {
+      const slot = await Slot.findById(req.params.id)
+      if (!slot) return res.status(404).json({ message: 'Slot not found.' })
+      const allowed = await canManageHall(slot.hallId, req.user)
+      if (!allowed) {
+        return res.status(403).json({ message: 'Access denied for this hall.' })
+      }
+    }
+
     const slot = await Slot.findByIdAndDelete(req.params.id)
     if (!slot) return res.status(404).json({ message: 'Slot not found.' })
+
     return res.json({ message: 'Slot deleted.' })
   } catch (err) {
     return res.status(500).json({ message: err.message })
@@ -100,6 +124,13 @@ export const deleteSlot = async (req, res) => {
 // Bulk delete slots by criteria
 export const bulkDeleteSlots = async (req, res) => {
   const { hallId, timeSlot, startDate, endDate } = req.body
+
+  if (req.user.role === 'custodian') {
+    const allowed = await canManageHall(hallId, req.user)
+    if (!allowed) {
+      return res.status(403).json({ message: 'Access denied for this hall.' })
+    }
+  }
   
   try {
     const filter = {}

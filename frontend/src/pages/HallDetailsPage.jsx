@@ -39,7 +39,7 @@ function HallDetailsPage({ halls }) {
       <section className="relative h-[60vh] min-h-[500px] w-full mt-[-80px]">
         {/* The negative margin pulls it up underneath the transparent fixed navbar */}
         <div className="absolute inset-0 z-0">
-          <img src={hall.image || defaultImage} alt={hall.name} className="w-full h-full object-cover" />
+          <img src={hall.imageUrl || hall.image || defaultImage} alt={hall.name} className="w-full h-full object-cover" />
           {/* Gradient Overlay for Text Readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
         </div>
@@ -112,7 +112,7 @@ function HallDetailsPage({ halls }) {
             <div>
               <p className="text-sm font-label uppercase tracking-widest text-secondary mb-2">Investment</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-headline text-white">$250</span>
+                <span className="text-5xl font-headline text-white">${hall.pricePerHour || hall.price || 0}</span>
                 <span className="text-slate-400">/ hour</span>
               </div>
             </div>

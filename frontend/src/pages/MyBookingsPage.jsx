@@ -1,24 +1,32 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, MapPin, Search, Headset } from 'lucide-react'
+import { Calendar, Clock, MapPin, Search, Headset, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import api from '../services/api'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
 
-function MyBookingsPage({ user, token }) {
+function MyBookingsPage({ token }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [cancelConfirm, setCancelConfirm] = useState(null)
+  const [cancelError, setCancelError] = useState('')
+  const [cancelSuccess, setCancelSuccess] = useState('')
 
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      setLoading(false)
+      return
+    }
     
     api.getMyBookings()
       .then(data => {
         setBookings(Array.isArray(data) ? data : [])
-        setLoading(false)
       })
       .catch((err) => {
         console.error(err)
-        setLoading(false)
       })
+      .finally(() => setLoading(false))
   }, [token])
 
   const defaultImage = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2669&ixlib=rb-4.0.3"
@@ -29,6 +37,31 @@ function MyBookingsPage({ user, token }) {
       month: 'long', 
       day: 'numeric'
     })
+  }
+
+  const onCancelClick = (booking) => {
+    setCancelError('')
+    setCancelSuccess('')
+    setCancelConfirm(booking)
+  }
+
+  const onConfirmCancel = async () => {
+    if (!cancelConfirm) return
+    setCancellingId(cancelConfirm._id)
+    try {
+      await api.cancelBooking(cancelConfirm._id)
+      setCancelSuccess(`Booking for ${cancelConfirm.hallId?.name} has been cancelled.`)
+      setBookings(bookings.filter(b => b._id !== cancelConfirm._id))
+      setCancelConfirm(null)
+    } catch (err) {
+      setCancelError(err?.data?.message || 'Failed to cancel booking.')
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
+  const canCancelBooking = (booking) => {
+    return booking.status === 'Pending' || booking.status === 'Approved'
   }
 
   return (
@@ -78,15 +111,16 @@ function MyBookingsPage({ user, token }) {
                   <img 
                     alt={booking.hallId?.name || 'Space'} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    src={booking.hallId?.imageUrl || defaultImage}
+                    src={booking.hallId?.imageUrl || booking.hallId?.image || defaultImage}
                   />
                 </div>
                 
                 <div className="flex-grow">
                   <div className="flex flex-wrap items-center gap-3 mb-2">
                     <span className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold ${
-                      booking.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400' : 
-                      booking.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                      booking.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-400' : 
+                      booking.status === 'Rejected' ? 'bg-red-500/20 text-red-400' :
+                      booking.status === 'Cancelled' ? 'bg-slate-500/20 text-slate-400' :
                       'bg-amber-500/20 text-amber-400'
                     }`}>
                       {booking.status}
@@ -99,11 +133,11 @@ function MyBookingsPage({ user, token }) {
                   <div className="flex flex-wrap items-center gap-6 text-slate-400 text-sm">
                     <div className="flex items-center gap-2">
                       <Calendar size={16} />
-                      {formatDate(booking.date)}
+                      {booking.slotId?.date ? formatDate(booking.slotId.date) : 'Date unavailable'}
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock size={16} />
-                      {booking.slot?.startTime} - {booking.slot?.endTime}
+                      {booking.slotId?.timeSlot || 'Time unavailable'}
                     </div>
                     {booking.purpose && (
                       <div className="flex items-center gap-2">
@@ -115,11 +149,27 @@ function MyBookingsPage({ user, token }) {
                 </div>
                 
                 <div className="flex lg:flex-col gap-3 w-full lg:w-auto mt-4 lg:mt-0">
-                  <button className="flex-1 lg:w-48 py-3 rounded-xl bg-surface-container-highest border border-white/10 text-white text-sm font-medium hover:bg-surface-bright transition-all">
-                    Manage Details
-                  </button>
-                  <button className="flex-1 lg:w-48 py-3 rounded-xl border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-all">
-                    Cancel Reservation
+                  <Link
+                    to={booking.hallId?._id ? `/halls/${booking.hallId._id}` : '/'}
+                    className="flex-1 lg:w-48 py-3 rounded-xl bg-surface-container-highest border border-white/10 text-white text-sm font-medium hover:bg-surface-bright transition-all text-center"
+                  >
+                    View Space
+                  </Link>
+                  <button
+                    onClick={() => onCancelClick(booking)}
+                    disabled={!canCancelBooking(booking) || cancellingId === booking._id}
+                    title={!canCancelBooking(booking) ? 'Cannot cancel this booking' : 'Cancel this booking'}
+                    className={`flex-1 lg:w-48 py-3 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                      canCancelBooking(booking)
+                        ? 'border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer'
+                        : 'border-white/10 text-slate-500 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    {cancellingId === booking._id ? (
+                      <><Loader2 size={16} className="animate-spin" /> Cancelling…</>
+                    ) : (
+                      'Cancel Booking'
+                    )}
                   </button>
                 </div>
               </div>
@@ -127,6 +177,59 @@ function MyBookingsPage({ user, token }) {
           ))
         )}
       </div>
+
+      {/* Cancellation Confirmation Dialog */}
+      <Dialog open={!!cancelConfirm} onOpenChange={(open) => !open && setCancelConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Booking?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this booking? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {cancelConfirm && (
+            <div className="space-y-3 rounded-xl border border-white/10 bg-white/3 p-4 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Hall</span>
+                <span className="text-white font-medium">{cancelConfirm.hallId?.name || 'Unknown'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Date</span>
+                <span className="text-white font-medium">{cancelConfirm.slotId?.date ? formatDate(cancelConfirm.slotId.date) : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Time Slot</span>
+                <span className="text-white font-medium">{cancelConfirm.slotId?.timeSlot || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Status</span>
+                <span className={`font-medium ${
+                  cancelConfirm.status === 'Approved' ? 'text-emerald-400' : 
+                  cancelConfirm.status === 'Rejected' ? 'text-red-400' :
+                  'text-amber-400'
+                }`}>{cancelConfirm.status}</span>
+              </div>
+            </div>
+          )}
+
+          {cancelError && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0" />
+              {cancelError}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelConfirm(null)} disabled={cancellingId}>
+              Keep Booking
+            </Button>
+            <Button onClick={onConfirmCancel} disabled={cancellingId} variant="destructive">
+              {cancellingId ? <><Loader2 size={16} className="animate-spin" /> Cancelling…</> : 'Cancel Booking'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Featured Concierge Support */}
       <section className="mt-24">

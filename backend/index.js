@@ -16,6 +16,7 @@ import slotRoutes from './routes/slots.js'
 import bookingRoutes from './routes/bookings.js'
 import userRoutes from './routes/users.js'
 import publicRoutes from './routes/public.js'
+import notificationRoutes from './routes/notifications.js'
 
 // Initialize App
 const app = express()
@@ -40,6 +41,7 @@ app.use('/api/halls', hallRoutes)
 app.use('/api/slots', slotRoutes)
 app.use('/api/bookings', bookingRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 // Global Error Handler
 app.use((err, req, res, next) => {

@@ -1,3 +1,4 @@
+import { custodianAssignmentTemplate } from '../templates/emailTemplates.js'
 import Hall from '../models/Hall.js'
 import User from '../models/User.js'
 import jwt from 'jsonwebtoken'
@@ -36,24 +37,7 @@ export const updateHall = async (req, res) => {
       sendMail({
         to: custodian.email,
         subject: 'You Have Been Assigned as Custodian',
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:540px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:2rem">
-            <h2 style="color:#1e40af;margin-top:0">Custodian Assignment</h2>
-            <p>Hello <strong>${custodian.name}</strong>,</p>
-            <p>You have been assigned as the custodian for:</p>
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:1rem;margin:1rem 0">
-              <p style="margin:0;color:#64748b;font-size:0.875rem">Hall</p>
-              <p style="margin:0.25rem 0 0;color:#0f172a;font-size:1.1rem;font-weight:700">${hall.name}</p>
-            </div>
-            <p>Please set your password to activate your account.</p>
-            <p>Click the link below:</p>
-            <a href="${setPasswordLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#1e40af;color:#ffffff;text-decoration:none;border-radius:0.5rem;font-weight:600;margin:1rem 0">
-              Set Password
-            </a>
-            <p style="color:#64748b;font-size:0.875rem;margin-top:1.5rem">This link will expire in 1 hour.</p>
-            <p style="margin-top:2rem">Regards,<br/><strong>Admin</strong></p>
-          </div>
-        `,
+        html: custodianAssignmentTemplate(custodian, hall, setPasswordLink),
       }).catch(err => logger.error({ err }, 'Custodian assignment email error'))
     }
   }

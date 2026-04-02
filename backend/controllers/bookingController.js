@@ -4,6 +4,14 @@ import Hall from '../models/Hall.js'
 import Notification from '../models/Notification.js'
 import User from '../models/User.js'
 import { sendMail } from '../utils/mailer.js'
+import { newBookingRequestTemplate, bookingApprovedTemplate } from '../templates/emailTemplates.js'
+
+const canManageHall = async (hallId, user) => {
+  if (user.role === 'admin') return true
+
+  const hall = await Hall.findOne({ _id: hallId, custodianId: user.id })
+  return !!hall
+}
 
 // POST /api/bookings — user requests a booking
 export const createBooking = async (req, res) => {
@@ -16,9 +24,22 @@ export const createBooking = async (req, res) => {
     if (slot.isBooked)
       return res.status(409).json({ message: 'Slot is already booked.' })
 
+    // Prevent overbooking: Check if slot already has pending or approved booking
+    const existingBooking = await Booking.findOne({ 
+      slotId, 
+      status: { $in: ['Pending', 'Approved'] } 
+    })
+    if (existingBooking) {
+      return res.status(409).json({ message: 'This slot is no longer available (another user just booked it).' })
+    }
+
+    if (hallId && hallId !== slot.hallId?._id?.toString()) {
+      return res.status(400).json({ message: 'hallId must match the selected slot.' })
+    }
+
     const booking = await Booking.create({
       userId: req.user.id,
-      hallId,
+      hallId: slot.hallId?._id || slot.hallId,
       slotId,
       message: message || '',
     })
@@ -44,77 +65,20 @@ export const createBooking = async (req, res) => {
       await sendMail({
         to: custodianEmail,
         subject: `New Booking Request — ${bookingRef}`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
-            <div style="background:#1e3a8a;padding:1.25rem 1.5rem">
-              <h2 style="color:#fff;margin:0;font-size:1.1rem">📋 New Hall Booking Request</h2>
-            </div>
-            <div style="padding:1.5rem">
-
-              <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;width:40%;vertical-align:top">Booking ID</td>
-                  <td style="padding:0.55rem 0;font-weight:700;color:#1e3a8a;font-size:1rem;letter-spacing:0.05em">${bookingRef}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested by</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${user.name}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Email</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${user.email}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Facility</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${hallName}</td>
-                </tr>
-                ${msgEvent ? `<tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Name</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent}</td>
-                </tr>` : ''}
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Date</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${slot.date}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Available Slot</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${slot.timeSlot}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Time</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgTime || message || 'N/A'}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Role</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${roleLabel}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested On</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${requestedOn}</td>
-                </tr>
-              </table>
-
-              <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
-                <a href="${base}&status=Approved"
-                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  ✅ Approve
-                </a>
-                <a href="${base}&status=Rejected"
-                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  ❌ Reject
-                </a>
-              </div>
-
-              <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
-            </div>
-          </div>
-        `,
+        html: newBookingRequestTemplate({
+          bookingRef,
+          userName: user.name,
+          userEmail: user.email,
+          hallName,
+          msgEvent,
+          slotDate: slot.date,
+          slotTimeSlot: slot.timeSlot,
+          msgTime,
+          message,
+          roleLabel,
+          requestedOn,
+          base,
+        }),
       })
       booking.emailSentToCustodian = true
       await booking.save()
@@ -125,6 +89,21 @@ export const createBooking = async (req, res) => {
     }
 
     return res.status(201).json(booking)
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// GET /api/bookings/my-bookings — authenticated user views their own bookings
+export const getMyBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate('userId', 'name email')
+      .populate('hallId', 'name capacity image imageUrl')
+      .populate('slotId', 'date timeSlot isBooked')
+      .sort({ createdAt: -1 })
+
+    return res.json(bookings)
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
@@ -171,6 +150,13 @@ export const updateBookingStatus = async (req, res) => {
       .populate('slotId', 'date timeSlot')
     if (!booking) return res.status(404).json({ message: 'Booking not found.' })
 
+    if (req.user.role === 'custodian') {
+      const allowed = await canManageHall(booking.hallId?._id || booking.hallId, req.user)
+      if (!allowed) {
+        return res.status(403).json({ message: 'Access denied for this hall.' })
+      }
+    }
+
     booking.status = status
     await booking.save()
 
@@ -182,22 +168,13 @@ export const updateBookingStatus = async (req, res) => {
         await sendMail({
           to: booking.userId.email,
           subject: `Your Booking ${bookingRef} Has Been Approved`,
-          html: `
-            <div style="font-family:sans-serif;max-width:540px;margin:auto;background:#0f172a;color:#e2e8f0;padding:2rem;border-radius:0.75rem">
-              <h2 style="color:#16a34a;margin-top:0">✅ Booking Approved!</h2>
-              <div style="background:#1e293b;border:1px solid #334155;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.25rem;display:inline-block">
-                <span style="color:#94a3b8;font-size:0.8rem;font-weight:600">BOOKING ID</span><br/>
-                <span style="color:#60a5fa;font-size:1.4rem;font-weight:800;letter-spacing:0.05em">${bookingRef}</span>
-              </div>
-              <p>Hi <b>${booking.userId.name}</b>, your booking has been <b style="color:#86efac">approved</b> by the custodian.</p>
-              <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
-                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem;width:40%">Hall</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.hallId?.name}</td></tr>
-                <tr style="border-bottom:1px solid #1e293b"><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Date</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.date}</td></tr>
-                <tr><td style="padding:0.5rem 0;color:#94a3b8;font-size:0.85rem">Time Slot</td><td style="padding:0.5rem 0;color:#fff;font-weight:600">${booking.slotId?.timeSlot}</td></tr>
-              </table>
-              <p style="color:#475569;font-size:0.75rem;margin-top:1rem">Booking ID ${bookingRef} · Campus Hall Booking System</p>
-            </div>
-          `,
+          html: bookingApprovedTemplate({
+            bookingRef,
+            userName: booking.userId.name,
+            hallName: booking.hallId?.name,
+            slotDate: booking.slotId?.date,
+            slotTimeSlot: booking.slotId?.timeSlot,
+          }),
         })
         booking.emailSentToUser = true
         await booking.save()
@@ -215,6 +192,74 @@ export const updateBookingStatus = async (req, res) => {
     })
 
     return res.json({ message: `Booking ${status}.`, booking })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// DELETE /api/bookings/:id — user/admin/custodian cancels a booking
+export const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('userId', 'name email')
+      .populate('hallId', 'name')
+      .populate('slotId', 'date timeSlot')
+    
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' })
+
+    // Check permissions: User can cancel their own bookings, admin/custodian can cancel any
+    if (req.user.role !== 'admin' && req.user.role !== 'custodian' && booking.userId._id.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'You can only cancel your own bookings.' })
+    }
+
+    // Only allow cancelling if booking is not yet approved or already rejected
+    if (booking.status === 'Approved') {
+      return res.status(400).json({ message: 'Cannot cancel an approved booking. Contact the custodian.' })
+    }
+
+    // If booking was approved, release the slot
+    if (booking.status === 'Approved') {
+      await Slot.findByIdAndUpdate(booking.slotId, { isBooked: false })
+    }
+
+    // Update booking status to cancelled
+    booking.status = 'Cancelled'
+    await booking.save()
+
+    // Notify custodian of cancellation
+    const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+    await Notification.create({
+      toRole: 'custodian',
+      message: `Booking ${bookingRef} has been cancelled by ${req.user.role}.`,
+      bookingId: booking._id,
+    })
+
+    // Send cancellation email to user
+    try {
+      await sendMail({
+        to: booking.userId.email,
+        subject: `Booking Cancellation Confirmed — ${bookingRef}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:540px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:2rem">
+            <h2 style="color:#dc2626;margin-top:0">Booking Cancelled</h2>
+            <p>Hello <strong>${booking.userId.name}</strong>,</p>
+            <p>Your booking request (${bookingRef}) for <strong>${booking.hallId?.name}</strong> has been cancelled.</p>
+            <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:1rem;margin:1rem 0">
+              <p style="margin:0"><strong>Booking Details:</strong></p>
+              <p style="margin:0.5rem 0">📅 Date: ${booking.slotId?.date}</p>
+              <p style="margin:0.5rem 0">⏰ Time Slot: ${booking.slotId?.timeSlot}</p>
+              <p style="margin:0.5rem 0">Status: Cancelled</p>
+            </div>
+            <p style="margin-top:1.5rem">If you have any questions, please contact the administrator.</p>
+            <p style="margin-top:2rem">Regards,<br/><strong>Hall Booking System</strong></p>
+          </div>
+        `,
+      })
+    } catch (err) {
+      console.error('Cancellation email error:', err.message)
+    }
+
+    return res.json({ message: 'Booking cancelled successfully.', booking })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
