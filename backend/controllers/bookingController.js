@@ -35,7 +35,7 @@ export const createBooking = async (req, res) => {
     const custodian = slot.hallId?.custodianId
     const custodianEmail = custodian?.email || process.env.CUSTODIAN_EMAIL
     const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
-    const base = `http://localhost:4000/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}`
+    const base = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}`
     const requestedOn = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     const roleLabel = user.role === 'student' ? 'Student' : user.role === 'faculty' ? 'Faculty' : user.role === 'user' ? 'Student' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
     const [msgEvent, msgTime] = (message || '').split('|').map(s => s.trim())

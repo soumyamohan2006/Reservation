@@ -2,7 +2,47 @@ import Slot from '../models/Slot.js'
 import Hall from '../models/Hall.js'
 
 export const createSlot = async (req, res) => {
-  const { hallId, date, timeSlot, isBooked } = req.body
+  const { hallId, date, timeSlot, isBooked, startDate, endDate } = req.body
+  
+  // Bulk generation mode: startDate + endDate
+  if (startDate && endDate) {
+    if (!hallId) return res.status(400).json({ message: 'hallId is required for bulk generation.' })
+    
+    try {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      
+      if (start > end) return res.status(400).json({ message: 'startDate must be before endDate.' })
+      
+      const defaultTimeSlot = timeSlot || '8AM-10PM'
+      const slots = []
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0]
+        
+        // Check if slot already exists
+        const exists = await Slot.findOne({ hallId, date: dateStr, timeSlot: defaultTimeSlot })
+        if (!exists) {
+          const slot = await Slot.create({ hallId, date: dateStr, timeSlot: defaultTimeSlot, isBooked: isBooked || false })
+          slots.push(slot)
+        }
+      }
+      
+      const hall = await Hall.findById(hallId)
+      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+      const skipped = totalDays - slots.length
+      
+      return res.status(201).json({ 
+        message: `Generated ${slots.length} slot(s) for ${hall?.name || 'hall'} (${startDate} to ${endDate}, ${defaultTimeSlot})${skipped > 0 ? `. Skipped ${skipped} duplicate(s).` : ''}`,
+        count: slots.length,
+        skipped
+      })
+    } catch (err) {
+      return res.status(500).json({ message: err.message })
+    }
+  }
+  
+  // Single slot creation mode
   if (!hallId || !date || !timeSlot)
     return res.status(400).json({ message: 'hallId, date and timeSlot are required.' })
   try {
@@ -53,6 +93,32 @@ export const deleteSlot = async (req, res) => {
     if (!slot) return res.status(404).json({ message: 'Slot not found.' })
     return res.json({ message: 'Slot deleted.' })
   } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// Bulk delete slots by criteria
+export const bulkDeleteSlots = async (req, res) => {
+  const { hallId, timeSlot, startDate, endDate } = req.body
+  
+  try {
+    const filter = {}
+    if (hallId) filter.hallId = hallId
+    if (timeSlot) filter.timeSlot = timeSlot
+    if (startDate && endDate) {
+      filter.date = { $gte: startDate, $lte: endDate }
+    } else if (startDate) {
+      filter.date = { $gte: startDate }
+    } else if (endDate) {
+      filter.date = { $lte: endDate }
+    }
+    
+    console.log('Bulk delete filter:', filter)
+    const result = await Slot.deleteMany(filter)
+    console.log('Deleted count:', result.deletedCount)
+    return res.json({ message: `Deleted ${result.deletedCount} slot(s).`, count: result.deletedCount })
+  } catch (err) {
+    console.error('Bulk delete error:', err)
     return res.status(500).json({ message: err.message })
   }
 }
