@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { API_URL } from '../config'
+import api from '../services/api'
 
 function toMinutes(t) {
   if (!t) return 0
@@ -44,10 +44,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     setBookingError('')
     setBookingSuccess('')
     setLoadingSlots(true)
-    fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
+    api.getAvailableSlots(resolvedHallId, date)
       .then(data => setAvailableSlots(Array.isArray(data) ? data : []))
       .catch(() => setAvailableSlots([]))
       .finally(() => setLoadingSlots(false))
@@ -81,28 +78,22 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     setBookingError('')
     setBookingSuccess('')
     try {
-      const res = await fetch(`${API_URL}/api/bookings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          hallId: resolvedHallId,
-          slotId: selectedSlot._id,
-          message: `${eventTitle} — ${organizer} | Time needed: ${neededStart}–${neededEnd}`,
-        }),
+      const data = await api.createBooking({
+        hallId: resolvedHallId,
+        slotId: selectedSlot._id,
+        message: `${eventTitle} — ${organizer} | Time needed: ${neededStart}–${neededEnd}`,
       })
-      const data = await res.json()
-      if (!res.ok) { setBookingError(data.message); return }
       setBookingSuccess(`Booking submitted for ${hall.name} on ${date} (${selectedSlot.timeSlot}: ${neededStart}–${neededEnd}). Awaiting approval.`)
       setSelectedSlot(null)
       setNeededStart('')
       setNeededEnd('')
       setTimeError('')
       setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting admin approval.`)
-      fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()).then(d => setAvailableSlots(Array.isArray(d) ? d : []))
-    } catch {
-      setBookingError('Server error. Please try again.')
+      
+      const newSlots = await api.getAvailableSlots(resolvedHallId, date)
+      setAvailableSlots(Array.isArray(newSlots) ? newSlots : [])
+    } catch (err) {
+      setBookingError(err?.data?.message || 'Server error. Please try again.')
     } finally {
       setIsBooking(false)
     }

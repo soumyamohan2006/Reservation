@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { API_URL } from '../config'
+import api from '../services/api'
 
 function SpacesPage({ halls }) {
   const { hallId } = useParams()
@@ -9,8 +9,7 @@ function SpacesPage({ halls }) {
 
   useEffect(() => {
     if (!hallId) return
-    fetch(`${API_URL}/api/bookings?hallId=${hallId}`)
-      .then((r) => r.json())
+    api.getGlobalBookings(hallId)
       .then(setBookings)
       .catch(() => setBookings([]))
   }, [hallId])

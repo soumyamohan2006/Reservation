@@ -21,6 +21,7 @@ const badge = (role) => ({
 const statusColor = (s) => s === 'Approved' ? '#86efac' : s === 'Rejected' ? '#fca5a5' : '#fde68a'
 
 const TABS = ['🏛️ Facilities', '📋 Bookings', '👥 Users', '👤 Custodians', '🕐 Slots']
+import api from '../services/api'
 
 export default function AdminPage({ token }) {
   const [tab, setTab] = useState('🏛️ Facilities')
@@ -48,15 +49,6 @@ export default function AdminPage({ token }) {
   const [custodianEmail, setCustodianEmail] = useState('')
   const [tempPassword, setTempPassword] = useState('')
 
-  const tk = () => token || localStorage.getItem('token')
-  const api = (path, opts = {}) => {
-    const { headers, ...rest } = opts
-    return fetch(`http://localhost:4000/api${path}`, {
-      ...rest,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}`, ...headers },
-    })
-  }
-
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
@@ -65,10 +57,10 @@ export default function AdminPage({ token }) {
     setLoading(false)
   }
 
-  const fetchHalls    = async () => { try { const r = await api('/halls'); const d = await r.json(); if (r.ok) setHalls(d) } catch {} }
-  const fetchUsers    = async () => { try { const r = await api('/users'); const d = await r.json(); if (r.ok) setUsers(d) } catch {} }
-  const fetchBookings = async () => { try { const r = await api('/bookings'); const d = await r.json(); if (r.ok) setBookings(d) } catch {} }
-  const fetchSlots    = async () => { try { const r = await api('/slots'); const d = await r.json(); if (r.ok) setSlots(d) } catch {} }
+  const fetchHalls    = async () => { try { const d = await api.getHalls(); if (d) setHalls(d) } catch {} }
+  const fetchUsers    = async () => { try { const d = await api.getUsers(); if (d) setUsers(d) } catch {} }
+  const fetchBookings = async () => { try { const d = await api.getGlobalBookings(); if (d) setBookings(d) } catch {} }
+  const fetchSlots    = async () => { try { const d = await api.getAllSlots(); if (d) setSlots(d) } catch {} }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
 
@@ -76,51 +68,55 @@ export default function AdminPage({ token }) {
   const saveHall = async (e) => {
     e.preventDefault()
     if (!hallName || !hallCapacity) { flash('❌ Name and capacity required.'); return }
-    const body = JSON.stringify({ name: hallName, capacity: Number(hallCapacity), custodianId: hallCustodian || null })
-    const r = editHall
-      ? await api(`/halls/${editHall._id}`, { method: 'PATCH', body })
-      : await api('/halls', { method: 'POST', body })
-    const d = await r.json()
-    if (r.ok) { flash(`✅ Hall ${editHall ? 'updated' : 'created'}.`); setHallName(''); setHallCapacity(''); setHallCustodian(''); setEditHall(null); fetchHalls() }
-    else flash(`❌ ${d.message}`)
+    const body = { name: hallName, capacity: Number(hallCapacity), custodianId: hallCustodian || null }
+    try {
+      if (editHall) {
+        await api.updateHall(editHall._id, body)
+      } else {
+        await api.createHall(body)
+      }
+      flash(`✅ Hall ${editHall ? 'updated' : 'created'}.`)
+      setHallName(''); setHallCapacity(''); setHallCustodian(''); setEditHall(null); fetchHalls()
+    } catch (err) {
+      flash(`❌ ${err?.data?.message || 'Failed to save hall'}`)
+    }
   }
 
   const startEditHall = (h) => { setEditHall(h); setHallName(h.name); setHallCapacity(h.capacity); setHallCustodian(h.custodianId?._id || ''); setTab('🏛️ Facilities') }
 
   const deleteHall = async (id) => {
     if (!confirm('Delete this hall?')) return
-    await api(`/halls/${id}`, { method: 'DELETE' }); flash('✅ Hall deleted.'); fetchHalls()
+    try { await api.deleteHall(id); flash('✅ Hall deleted.'); fetchHalls() } catch {}
   }
 
   // --- USERS ---
   const changeRole = async (id, role) => {
-    const r = await api(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })
-    if (r.ok) { flash('✅ Role updated.'); fetchUsers() }
+    try { await api.changeUserRole(id, role); flash('✅ Role updated.'); fetchUsers() } catch {}
   }
 
   const deleteUser = async (id) => {
     if (!confirm('Delete this user?')) return
-    await api(`/users/${id}`, { method: 'DELETE' }); flash('✅ User deleted.'); fetchUsers()
+    try { await api.deleteUser(id); flash('✅ User deleted.'); fetchUsers() } catch {}
   }
 
   const createCustodian = async (e) => {
     e.preventDefault()
     if (!custodianName || !custodianEmail) { flash('❌ Name and email required.'); return }
-    const r = await api('/users/custodian', { method: 'POST', body: JSON.stringify({ name: custodianName, email: custodianEmail }) })
-    const d = await r.json()
-    if (r.ok) {
+    try {
+      const d = await api.createCustodian({ name: custodianName, email: custodianEmail })
       flash(`✅ Custodian created.`)
       setTempPassword(d.tempPassword)
       setCustodianName('')
       setCustodianEmail('')
       fetchUsers()
-    } else flash(`❌ ${d.message}`)
+    } catch (err) {
+      flash(`❌ ${err?.data?.message || 'Failed to create custodian'}`)
+    }
   }
 
   // --- BOOKINGS ---
   const updateBooking = async (id, status) => {
-    const r = await api(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify({ status }) })
-    if (r.ok) { flash(`✅ Booking ${status}.`); fetchBookings(); fetchSlots() }
+    try { await api.updateBookingStatus(id, status); flash(`✅ Booking ${status}.`); fetchBookings(); fetchSlots() } catch {}
   }
 
   // --- SLOTS ---
@@ -129,13 +125,15 @@ export default function AdminPage({ token }) {
     if (!slotHallId || !slotDate) { flash('❌ Hall and date are required.'); return }
     const finalStartTime = startTime || '8AM'
     const finalEndTime = endTime || '12AM'
-    const r = await api('/slots', { method: 'POST', body: JSON.stringify({ hallId: slotHallId, date: slotDate, timeSlot: `${finalStartTime}-${finalEndTime}` }) })
-    const d = await r.json()
-    if (r.ok) { flash('✅ Slot added.'); setSlotDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
-    else flash(`❌ ${d.message}`)
+    try {
+      await api.createSlot({ hallId: slotHallId, date: slotDate, timeSlot: `${finalStartTime}-${finalEndTime}` })
+      flash('✅ Slot added.'); setSlotDate(''); setStartTime(''); setEndTime(''); fetchSlots()
+    } catch (err) {
+      flash(`❌ ${err?.data?.message || 'Failed to add slot'}`)
+    }
   }
 
-  const deleteSlot = async (id) => { await api(`/slots/${id}`, { method: 'DELETE' }); fetchSlots() }
+  const deleteSlot = async (id) => { try { await api.deleteSlot(id); fetchSlots() } catch {} }
 
   const custodians = users.filter(u => u.role === 'custodian')
   const endTimeOptions = TIME_POINTS.filter(t => !startTime || toMinutes(t) > toMinutes(startTime))

@@ -1,18 +1,47 @@
-:root {
-  font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,700;1,6..72,400&family=Soria&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'Inter', sans-serif;
+    color-scheme: dark;
+  }
+  
+  html {
+    background-color: #131314;
+    color-scheme: dark;
+  }
+  body {
+    @apply m-0 min-h-screen bg-surface text-on-surface font-body overflow-x-hidden selection:bg-primary/30;
+  }
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
+@layer utilities {
+  .font-newsreader { font-family: 'Newsreader', serif; }
+  .font-soria { font-family: 'Soria', 'Newsreader', serif; }
+  
+  .glass-panel {
+    background: rgba(53, 52, 54, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  .rim-light {
+    border-top: 0.5px solid rgba(173, 198, 255, 0.2);
+  }
+  
+  .soft-glow {
+    box-shadow: 0 0 40px -10px rgba(77, 142, 255, 0.15);
+  }
+  
+  .bg-glow-indigo {
+    background: radial-gradient(circle at center, rgba(75, 0, 130, 0.15) 0%, transparent 70%);
+  }
+  
+  .bg-glow-slate {
+    background: radial-gradient(circle at center, rgba(112, 128, 144, 0.1) 0%, transparent 70%);
+  }
 }

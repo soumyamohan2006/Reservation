@@ -8,8 +8,6 @@ import { sendMail } from '../utils/mailer.js'
 // POST /api/bookings — user requests a booking
 export const createBooking = async (req, res) => {
   const { hallId, slotId, message } = req.body
-  if (!hallId || !slotId)
-    return res.status(400).json({ message: 'hallId and slotId are required.' })
 
   try {
     const slot = await Slot.findById(slotId).populate({ path: 'hallId', populate: { path: 'custodianId', select: 'name email' } })
@@ -165,8 +163,6 @@ export const getCustodianBookings = async (req, res) => {
 // PUT /api/bookings/:id — custodian/admin approves or rejects
 export const updateBookingStatus = async (req, res) => {
   const { status } = req.body
-  if (!['Approved', 'Rejected'].includes(status))
-    return res.status(400).json({ message: 'status must be Approved or Rejected.' })
 
   try {
     const booking = await Booking.findById(req.params.id)

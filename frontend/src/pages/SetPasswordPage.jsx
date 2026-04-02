@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import api from '../services/api'
 
 function SetPasswordPage() {
   const navigate = useNavigate()
@@ -42,25 +43,13 @@ function SetPasswordPage() {
     setError('')
     
     try {
-      const res = await fetch('http://localhost:4000/api/auth/set-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
-      })
-      const data = await res.json()
-      
-      if (!res.ok) {
-        setError(data.message || 'Failed to set password.')
-        setLoading(false)
-        return
-      }
-      
+      await api.setPassword({ token, password })
       setSuccess(true)
       setTimeout(() => {
         navigate('/login')
       }, 2000)
-    } catch {
-      setError('Server error. Please try again later.')
+    } catch (err) {
+      setError(err?.data?.message || 'Server error. Please try again later.')
       setLoading(false)
     }
   }

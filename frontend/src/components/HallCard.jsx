@@ -1,41 +1,44 @@
+import React from 'react'
 import { Link } from 'react-router-dom'
+import { Users } from 'lucide-react'
 
-function HallCard({ hall }) {
+const HallCard = ({ hall }) => {
+  // Use placeholder image if none exists
+  const defaultImage = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2669&ixlib=rb-4.0.3"
+
   return (
-    <article className="hall-card">
-      <div className="card-media-wrap">
-        <img src={hall.image} alt={hall.name} className="card-media" loading="lazy" />
-        <span className="capacity-badge">
-          Capacity: {hall.capacity}
-        </span>
+    <Link to={`/halls/${hall._id}`} className="group flex flex-col bg-surface-container-low hover:bg-surface-container-high transition-all duration-500 rounded-2xl overflow-hidden cursor-pointer shadow-xl border border-white/5 hover:border-white/10">
+      <div className="relative h-72 overflow-hidden">
+        <img 
+          src={hall.imageUrl || defaultImage} 
+          alt={hall.name}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+        />
+        <div className="absolute top-4 right-4 bg-surface/60 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] uppercase tracking-widest text-primary font-bold border border-white/10">
+          {hall.capacity >= 150 ? 'Premium Hall' : 'Executive'}
+        </div>
       </div>
-
-      <div className="card-content">
-        <span className="status-badge">
-          ACTIVE
-        </span>
-
-        <h3 className="hall-title">{hall.name}</h3>
-        <p className="hall-description">{hall.description}</p>
-
-        <div className="feature-list">
-          {hall.features.map((feature) => (
-            <span key={feature} className="feature-tag">
-              {feature}
+      
+      <div className="p-8 flex flex-col flex-grow">
+        <h3 className="font-headline text-2xl text-white mb-2 line-clamp-1">{hall.name}</h3>
+        <p className="text-slate-400 text-sm mb-6 flex items-center">
+          <Users size={16} className="mr-2 opacity-70" />
+          Up to {hall.capacity} guests
+        </p>
+        
+        <div className="mt-auto flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 uppercase tracking-tighter block">Price per slot</span>
+            <span className="text-xl font-medium text-white">
+              ${hall.price || 150} <span className="text-sm text-slate-400">/ hour</span>
             </span>
-          ))}
-        </div>
-
-        <div className="card-actions">
-          <Link to={`/halls/${hall.id}`} className="btn btn-light">
+          </div>
+          <button className="bg-surface-container-highest text-primary px-5 py-2.5 rounded-xl text-sm font-semibold group-hover:bg-primary group-hover:text-on-primary transition-all duration-300">
             View Details
-          </Link>
-          <Link to={`/reserve/${hall.id}`} className="btn btn-primary">
-            Reserve
-          </Link>
+          </button>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 

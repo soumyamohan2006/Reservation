@@ -1,12 +1,13 @@
 {
   "name": "reservation-backend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon index.js",
     "start": "node index.js",
-    "seed": "node seed.js"
+    "dev": "nodemon index.js",
+    "db:seed": "node scripts/seedDefaults.js",
+    "db:seed-old": "node scripts/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,7 +16,11 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.0",
-    "nodemailer": "^8.0.3"
+    "nodemailer": "^8.0.3",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "pino-pretty": "^13.1.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

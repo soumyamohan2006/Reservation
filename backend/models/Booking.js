@@ -11,4 +11,10 @@ const bookingSchema = new mongoose.Schema({
   emailError: { type: String, default: '' },
 }, { timestamps: true })
 
+// Optimization: Index fields that are frequently queried
+bookingSchema.index({ userId: 1 })
+bookingSchema.index({ hallId: 1, status: 1 }) // For custodians fetching their hall's pending/approved bookings
+bookingSchema.index({ slotId: 1 })
+bookingSchema.index({ status: 1 })
+
 export default mongoose.model('Booking', bookingSchema)

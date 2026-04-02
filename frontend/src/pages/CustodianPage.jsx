@@ -21,6 +21,8 @@ function toMinutes(t) {
   return h * 60
 }
 
+import api from '../services/api'
+
 export default function CustodianPage({ token, user }) {
   const [tab, setTab] = useState('Requests')
   const [bookings, setBookings] = useState([])
@@ -50,24 +52,21 @@ export default function CustodianPage({ token, user }) {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/bookings/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
-      const data = await res.json()
-      if (res.ok) setBookings(data)
+      const data = await api.getCustodianBookings()
+      if (Array.isArray(data)) setBookings(data)
     } catch {}
   }
 
   const fetchSlots = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/slots/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
-      const data = await res.json()
-      if (res.ok) setSlots(data)
+      const data = await api.getCustodianSlots()
+      if (Array.isArray(data)) setSlots(data)
     } catch {}
   }
 
   const fetchHalls = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/halls/custodian', { headers: { Authorization: `Bearer ${tk()}` } })
-      const data = await res.json()
+      const data = await api.getCustodianHalls()
       if (Array.isArray(data)) setHalls(data)
     } catch {}
   }
@@ -75,15 +74,12 @@ export default function CustodianPage({ token, user }) {
   const updateStatus = async (id, status) => {
     setMsg('')
     try {
-      const res = await fetch(`http://localhost:4000/api/bookings/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
-        body: JSON.stringify({ status }),
-      })
-      const data = await res.json()
-      if (res.ok) { setMsg(`✅ Booking ${status} successfully.`); fetchAll() }
-      else setMsg(`❌ ${data.message}`)
-    } catch { setMsg('❌ Failed to update booking.') }
+      await api.updateBookingStatus(id, status)
+      setMsg(`✅ Booking ${status} successfully.`)
+      fetchAll()
+    } catch (err) {
+      setMsg(`❌ ${err?.data?.message || 'Failed to update booking.'}`)
+    }
   }
 
   const markUnavailable = async (e) => {
@@ -91,20 +87,16 @@ export default function CustodianPage({ token, user }) {
     if (!hallId || !date || !startTime || !endTime) { setSlotMsg('All fields are required.'); return }
     setSlotMsg('')
     try {
-      const res = await fetch('http://localhost:4000/api/slots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
-        body: JSON.stringify({ hallId, date, timeSlot: `${startTime}-${endTime}`, isBooked: true }),
-      })
-      const data = await res.json()
-      if (res.ok) { setSlotMsg('✅ Slot marked as unavailable.'); setDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
-      else setSlotMsg(`❌ ${data.message}`)
-    } catch { setSlotMsg('❌ Server error.') }
+      await api.createSlot({ hallId, date, timeSlot: `${startTime}-${endTime}`, isBooked: true })
+      setSlotMsg('✅ Slot marked as unavailable.'); setDate(''); setStartTime(''); setEndTime(''); fetchSlots()
+    } catch (err) {
+      setSlotMsg(`❌ ${err?.data?.message || 'Server error.'}`)
+    }
   }
 
   const deleteSlot = async (id) => {
     try {
-      await fetch(`http://localhost:4000/api/slots/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
+      await api.deleteSlot(id)
       fetchSlots()
     } catch {}
   }
