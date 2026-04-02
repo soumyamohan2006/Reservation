@@ -185,16 +185,16 @@ export const updateBookingStatus = async (req, res) => {
       try {
         const slot = await Slot.findById(booking.slotId)
         const msgTime = (booking.message || '').split('|').pop().replace('Time needed:', '').trim()
+        console.log('Split debug — message:', booking.message)
+        console.log('Split debug — msgTime:', msgTime)
 
         const toMin = (t) => {
           if (!t) return 0
           t = t.trim()
-          // HH:MM 24hr format from <input type="time">
           if (/^\d{1,2}:\d{2}$/.test(t)) {
             const [h, m] = t.split(':').map(Number)
             return h * 60 + m
           }
-          // 8AM / 10PM format
           const mt = t.match(/^(\d+)(?::(\d+))?(AM|PM)$/i)
           if (!mt) return 0
           let h = parseInt(mt[1]), m = parseInt(mt[2] || 0)
@@ -212,18 +212,22 @@ export const updateBookingStatus = async (req, res) => {
           return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2, '0')}${p}`
         }
 
-        // Match both HH:MM and 8AM/10PM formats
+        // Split timeSlot on the dash between two time labels e.g. "8AM-10PM"
+        const slotParts = slot.timeSlot.match(/^(.+?)-(.+)$/)
         const timeMatch = msgTime.match(/([\d]{1,2}(?::\d{2})?(?:AM|PM)?)\s*[–\-]\s*([\d]{1,2}(?::\d{2})?(?:AM|PM)?)/i)
+        console.log('Split debug — slotParts:', slotParts)
+        console.log('Split debug — timeMatch:', timeMatch)
 
-        if (slot && timeMatch) {
-          const [slotS, slotE] = slot.timeSlot.split('-')
-          const slotStart = toMin(slotS)
-          const slotEnd = toMin(slotE)
+        if (slot && slotParts && timeMatch) {
+          const slotStart = toMin(slotParts[1])
+          const slotEnd = toMin(slotParts[2])
           const bookedStart = toMin(timeMatch[1])
           const bookedEnd = toMin(timeMatch[2])
+          console.log(`slotStart=${slotStart} slotEnd=${slotEnd} bookedStart=${bookedStart} bookedEnd=${bookedEnd}`)
 
           if (bookedStart > slotStart) {
             const ts = `${toLabel(slotStart)}-${toLabel(bookedStart)}`
+            console.log('Creating before slot:', ts)
             await Slot.findOneAndUpdate(
               { hallId: slot.hallId, date: slot.date, timeSlot: ts },
               { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
@@ -232,6 +236,7 @@ export const updateBookingStatus = async (req, res) => {
           }
           if (bookedEnd < slotEnd) {
             const ts = `${toLabel(bookedEnd)}-${toLabel(slotEnd)}`
+            console.log('Creating after slot:', ts)
             await Slot.findOneAndUpdate(
               { hallId: slot.hallId, date: slot.date, timeSlot: ts },
               { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
