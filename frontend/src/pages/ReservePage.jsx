@@ -55,12 +55,35 @@ function ReservePage({ halls, setHeaderNotice, token }) {
 
   const onSlotClick = (slot) => {
     const isSame = selectedSlot?._id === slot._id
-    setSelectedSlot(isSame ? null : slot)
+    // Unlock previous slot
+    if (selectedSlot && !isSame) {
+      fetch(`${API_URL}/api/slots/${selectedSlot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    }
+    if (isSame) {
+      // Deselect — unlock
+      fetch(`${API_URL}/api/slots/${slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      setSelectedSlot(null)
+    } else {
+      // Lock new slot
+      fetch(`${API_URL}/api/slots/${slot._id}/lock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { if (d.message) setBookingError(d.message) })
+      setSelectedSlot(slot)
+    }
     setNeededStart('')
     setNeededEnd('')
     setTimeError('')
     setBookingError('')
   }
+
+  // Unlock slot on page leave
+  useEffect(() => {
+    return () => {
+      if (selectedSlot) {
+        fetch(`${API_URL}/api/slots/${selectedSlot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      }
+    }
+  }, [selectedSlot])
 
   const onBook = async () => {
     if (!organizer || !eventTitle) { setBookingError('Please enter organizer name and event title.'); return }

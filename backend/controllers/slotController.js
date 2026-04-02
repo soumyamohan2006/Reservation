@@ -78,10 +78,44 @@ export const getCustodianSlots = async (req, res) => {
 export const getAvailableSlots = async (req, res) => {
   const { hallId, date } = req.query
   try {
-    const filter = { isBooked: false }
+    const now = new Date()
+    const filter = { isBooked: false, $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }, { lockedBy: req.user.id }] }
     if (hallId) filter.hallId = hallId
     if (date) filter.date = date
     return res.json(await Slot.find(filter).populate('hallId', 'name capacity'))
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+export const lockSlot = async (req, res) => {
+  try {
+    const now = new Date()
+    const slot = await Slot.findById(req.params.id)
+    if (!slot) return res.status(404).json({ message: 'Slot not found.' })
+    if (slot.isBooked) return res.status(409).json({ message: 'Slot already booked.' })
+    // Check if locked by someone else and lock is still valid
+    if (slot.lockedBy && slot.lockedBy.toString() !== req.user.id && slot.lockedUntil > now)
+      return res.status(409).json({ message: 'Slot is currently selected by another user.' })
+    slot.lockedBy = req.user.id
+    slot.lockedUntil = new Date(now.getTime() + 5 * 60 * 1000) // 5 min lock
+    await slot.save()
+    return res.json({ ok: true })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+export const unlockSlot = async (req, res) => {
+  try {
+    const slot = await Slot.findById(req.params.id)
+    if (!slot) return res.status(404).json({ message: 'Slot not found.' })
+    if (slot.lockedBy?.toString() === req.user.id) {
+      slot.lockedBy = null
+      slot.lockedUntil = null
+      await slot.save()
+    }
+    return res.json({ ok: true })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
