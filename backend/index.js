@@ -190,19 +190,7 @@ app.use((err, _req, res, _next) => {
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB')
-    const Hall = (await import('./models/Hall.js')).default
     const User = (await import('./models/User.js')).default
-
-    // Seed default halls only if they don't exist by name
-    const defaultHalls = [
-      { name: 'Auditorium', capacity: 500 },
-      { name: 'Seminar Hall', capacity: 200 },
-      { name: 'CGPC Hall', capacity: 50 },
-    ]
-    for (const h of defaultHalls) {
-      const exists = await Hall.findOne({ name: h.name })
-      if (!exists) { await Hall.create(h); console.log(`Seeded hall: ${h.name}`) }
-    }
 
     // Seed default admin account
     const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL })
@@ -222,6 +210,7 @@ mongoose.connect(process.env.MONGO_URI)
 
     // Fix any slots where hallId is stored as a string instead of ObjectId
     const Slot = (await import('./models/Slot.js')).default
+    const Hall = (await import('./models/Hall.js')).default
     const allHalls = await Hall.find()
     for (const hall of allHalls) {
       await Slot.collection.updateMany({ hallId: hall.name }, { $set: { hallId: hall._id } })
