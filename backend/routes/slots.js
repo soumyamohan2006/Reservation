@@ -11,7 +11,7 @@ router.post('/', authenticate, authorize('admin', 'custodian'), createSlot)
 router.post('/bulk-delete', authenticate, authorize('admin'), bulkDeleteSlots)
 router.post('/:id/lock', authenticate, lockSlot)
 router.post('/:id/unlock', authenticate, unlockSlot)
-router.get('/', authenticate, authorize('admin'), getAllSlots)
+router.get('/', authenticate, authorize('admin', 'custodian'), getAllSlots)
 router.delete('/:id', authenticate, authorize('admin', 'custodian'), deleteSlot)
 
 export default router

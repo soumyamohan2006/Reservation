@@ -11,6 +11,8 @@ export const createHall = async (req, res) => {
     const hall = await Hall.create({ name, capacity, custodianId: custodianId || null })
     return res.status(201).json(hall)
   } catch (err) {
+    if (err.code === 11000)
+      return res.status(409).json({ message: 'Hall with this name already exists.' })
     return res.status(500).json({ message: err.message })
   }
 }

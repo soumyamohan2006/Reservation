@@ -69,6 +69,8 @@ export const createCustodian = async (req, res) => {
     
     return res.status(201).json({ user: { _id: user._id, name: user.name, email: user.email, role: user.role }, tempPassword: password })
   } catch (err) {
+    if (err.code === 11000)
+      return res.status(409).json({ message: 'Email already exists.' })
     return res.status(500).json({ message: err.message })
   }
 }

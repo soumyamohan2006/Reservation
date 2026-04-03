@@ -208,9 +208,10 @@ mongoose.connect(process.env.MONGO_URI)
 
     app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`))
 
+    // Auto-cleanup disabled - slots will not be automatically deleted
+    // Uncomment below to enable automatic deletion of past slots
+    /*
     const Slot = (await import('./models/Slot.js')).default
-
-    // Delete past slots once on startup, then every day at midnight
     const deletePastSlots = async () => {
       const today = new Date().toISOString().split('T')[0]
       const result = await Slot.deleteMany({ date: { $lt: today } })
@@ -220,6 +221,7 @@ mongoose.connect(process.env.MONGO_URI)
     const now = new Date()
     const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now
     setTimeout(() => { deletePastSlots(); setInterval(deletePastSlots, 24 * 60 * 60 * 1000) }, msUntilMidnight)
+    */
   })
   .catch((err) => {
     console.error('MongoDB connection failed:', err.message)

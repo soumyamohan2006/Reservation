@@ -10,8 +10,8 @@ router.post('/', authenticate, createBooking)
 // Custodian views only their hall bookings
 router.get('/custodian', authenticate, authorize('custodian'), getCustodianBookings)
 
-// Admin views all bookings
-router.get('/', authenticate, authorize('admin'), getAllBookings)
+// Admin/Custodian views all bookings
+router.get('/', authenticate, authorize('admin', 'custodian'), getAllBookings)
 
 // Custodian/admin approves or rejects a booking
 router.put('/:id', authenticate, authorize('admin', 'custodian'), updateBookingStatus)

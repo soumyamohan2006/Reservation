@@ -4,7 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/', authenticate, authorize('admin'), getAllUsers)
+router.get('/', authenticate, authorize('admin', 'custodian'), getAllUsers)
 router.post('/custodian', authenticate, authorize('admin'), createCustodian)
 router.patch('/:id/role', authenticate, authorize('admin'), updateUserRole)
 router.delete('/:id', authenticate, authorize('admin'), deleteUser)
