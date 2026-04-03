@@ -205,6 +205,20 @@ mongoose.connect(process.env.MONGO_URI)
     }
     console.log('Database counts on startup:', counts)
 
+    // Seed admin if not exists
+    const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL })
+    if (!adminExists) {
+      await User.create({ name: 'Admin', email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, role: 'admin' })
+      console.log(`Admin seeded: ${process.env.ADMIN_EMAIL}`)
+    }
+
+    // Seed custodian if not exists
+    const custodianExists = await User.findOne({ email: process.env.CUSTODIAN_EMAIL })
+    if (!custodianExists) {
+      await User.create({ name: 'Custodian', email: process.env.CUSTODIAN_EMAIL, password: process.env.CUSTODIAN_PASSWORD, role: 'custodian' })
+      console.log(`Custodian seeded: ${process.env.CUSTODIAN_EMAIL}`)
+    }
+
     app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`))
   })
   .catch((err) => {
