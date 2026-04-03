@@ -32,11 +32,14 @@ function App() {
     fetch(`${API_URL}/api/halls`)
       .then(r => r.json())
       .then(data => {
+        console.log('DB Halls:', data)
         if (Array.isArray(data) && data.length > 0) {
           const merged = staticHalls.map(sh => {
             const match = data.find(dh => dh.name.toLowerCase() === sh.name.toLowerCase())
+            console.log(`Matching ${sh.name}:`, match ? match._id : 'NOT FOUND')
             return match ? { ...sh, mongoId: match._id } : sh
           })
+          console.log('Merged halls:', merged)
           setDbHalls(merged)
         }
       })
