@@ -5,11 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js",
-    "seed": "node seed.js",
-    "backup": "node backup.js",
-    "restore": "node restore.js",
-    "seed-essential": "node seedEssential.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

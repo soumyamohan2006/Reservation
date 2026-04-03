@@ -197,13 +197,13 @@ mongoose.connect(process.env.MONGO_URI)
     const Slot = (await import('./models/Slot.js')).default
     const Booking = (await import('./models/Booking.js')).default
     
-    const counts = {
-      users: await User.countDocuments(),
-      halls: await Hall.countDocuments(),
-      slots: await Slot.countDocuments(),
-      bookings: await Booking.countDocuments()
-    }
-    console.log('Database counts on startup:', counts)
+    // const counts = {
+    //   users: await User.countDocuments(),
+    //   halls: await Hall.countDocuments(),
+    //   slots: await Slot.countDocuments(),
+    //   bookings: await Booking.countDocuments()
+    // }
+    // console.log('Database counts on startup:', counts)
 
     // Seed admin if not exists
     const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL })
@@ -225,3 +225,7 @@ mongoose.connect(process.env.MONGO_URI)
     console.error('MongoDB connection failed:', err.message)
     process.exit(1)
   })
+
+  mongoose.connection.once('open', () => {
+      console.log('MongoDB Connected to:', mongoose.connection.name);
+    });
