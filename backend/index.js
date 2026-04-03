@@ -190,21 +190,21 @@ app.use((err, _req, res, _next) => {
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB..')
-    const User = (await import('./models/User.js')).default
+    // const User = (await import('./models/User.js')).default
 
-    // Seed default admin account
-    const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL })
-    if (!adminExists) {
-      await User.create({ name: 'Admin', email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, role: 'admin' })
-      console.log(`Admin seeded: ${process.env.ADMIN_EMAIL}`)
-    }
+    // // Seed default admin account
+    // const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL })
+    // if (!adminExists) {
+    //   await User.create({ name: 'Admin', email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, role: 'admin' })
+    //   console.log(`Admin seeded: ${process.env.ADMIN_EMAIL}`)
+    // }
 
-    // Seed default custodian account
-    const custodianExists = await User.findOne({ email: process.env.CUSTODIAN_EMAIL })
-    if (!custodianExists) {
-      await User.create({ name: 'Custodian', email: process.env.CUSTODIAN_EMAIL, password: process.env.CUSTODIAN_PASSWORD, role: 'custodian' })
-      console.log(`Custodian seeded: ${process.env.CUSTODIAN_EMAIL}`)
-    }
+    // // Seed default custodian account
+    // const custodianExists = await User.findOne({ email: process.env.CUSTODIAN_EMAIL })
+    // if (!custodianExists) {
+    //   await User.create({ name: 'Custodian', email: process.env.CUSTODIAN_EMAIL, password: process.env.CUSTODIAN_PASSWORD, role: 'custodian' })
+    //   console.log(`Custodian seeded: ${process.env.CUSTODIAN_EMAIL}`)
+    // }
 
     app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`))
   })
