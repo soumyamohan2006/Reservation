@@ -10,7 +10,6 @@ const slotSchema = new mongoose.Schema({
   lockedUntil: { type: Date, default: null },
 }, { timestamps: true })
 
-
 // Prevent duplicate slots for the same hall/date/timeSlot
 slotSchema.index({ hallId: 1, date: 1, timeSlot: 1 }, { unique: true })
 
