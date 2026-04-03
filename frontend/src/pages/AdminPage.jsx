@@ -459,7 +459,7 @@ export default function AdminPage({ token }) {
                     <div style={{ padding: '0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.5rem', color: '#1e40af', fontSize: '0.85rem' }}>
                       💡 <b>Bulk Mode:</b> Generates slots for every day between start and end date. Default time: 8AM-10PM
                     </div>
-                    <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>🚀 Generate Slots</button>
+                    <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={e => e.target.style.background = '#1d4ed8'} onMouseLeave={e => e.target.style.background = '#2563eb'}>🚀 Generate Slots</button>
                   </form>
                 ) : (
                   <form onSubmit={addSlot} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
