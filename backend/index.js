@@ -189,7 +189,7 @@ app.use((err, _req, res, _next) => {
 
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
-    console.log('Connected to MongoDB')
+    console.log('Connected to MongoDB..')
     const User = (await import('./models/User.js')).default
 
     // Seed default admin account
