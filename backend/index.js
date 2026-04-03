@@ -208,22 +208,7 @@ mongoose.connect(process.env.MONGO_URI)
 
     app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`))
 
-    // Fix any slots where hallId is stored as a string instead of ObjectId
     const Slot = (await import('./models/Slot.js')).default
-    const Hall = (await import('./models/Hall.js')).default
-    const allHalls = await Hall.find()
-    for (const hall of allHalls) {
-      await Slot.collection.updateMany({ hallId: hall.name }, { $set: { hallId: hall._id } })
-      await Slot.collection.updateMany({ hallId: hall.name.toLowerCase() }, { $set: { hallId: hall._id } })
-    }
-    const { ObjectId } = mongoose.Types
-    const rawSlots = await Slot.collection.find({}).toArray()
-    for (const s of rawSlots) {
-      if (typeof s.hallId === 'string' && ObjectId.isValid(s.hallId)) {
-        await Slot.collection.updateOne({ _id: s._id }, { $set: { hallId: new ObjectId(s.hallId) } })
-      }
-    }
-    console.log('Hall ID fix applied.')
 
     // Delete past slots once on startup, then every day at midnight
     const deletePastSlots = async () => {
