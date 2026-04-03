@@ -82,8 +82,14 @@ export const getAvailableSlots = async (req, res) => {
     const filter = { isBooked: false, $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }, { lockedBy: req.user.id }] }
     if (hallId) filter.hallId = hallId
     if (date) filter.date = date
-    return res.json(await Slot.find(filter).populate('hallId', 'name capacity'))
+    
+    console.log('Available slots query:', { hallId, date, userId: req.user.id })
+    const slots = await Slot.find(filter).populate('hallId', 'name capacity')
+    console.log(`Found ${slots.length} available slots`)
+    
+    return res.json(slots)
   } catch (err) {
+    console.error('getAvailableSlots error:', err)
     return res.status(500).json({ message: err.message })
   }
 }
