@@ -197,7 +197,7 @@ export default function CustodianPage({ token, user }) {
                             <td style={{ padding: '0.75rem', color: '#0f172a' }}>{s.hallId?.name || '—'}</td>
                             <td style={{ padding: '0.75rem', color: '#0f172a' }}>{s.date}</td>
                             <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600 }}>{s.timeSlot}</td>
-                            <td style={{ padding: '0.75rem' }}><span style={badge(s.isBooked ? 'Booked' : 'Available')}>{s.isBooked ? 'Booked' : 'Available'}</span></td>
+                            <td style={{ padding: '0.75rem', background: s.isBooked ? '#fee2e2' : 'transparent' }}><span style={{ ...badge(s.isBooked ? 'Booked' : 'Available'), background: s.isBooked ? '#dc2626' : '#f0fdf4', color: s.isBooked ? '#ffffff' : '#15803d' }}>{s.isBooked ? 'Booked' : 'Available'}</span></td>
                           </tr>
                         ))}
                       </tbody>

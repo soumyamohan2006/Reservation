@@ -541,7 +541,7 @@ export default function AdminPage({ token }) {
                             <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.hallId?.name || '—'}</td>
                             <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.date}</td>
                             <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600, fontSize: '0.875rem' }}>{s.timeSlot}</td>
-                            <td style={{ padding: '0.75rem', color: s.isBooked ? '#b91c1c' : '#15803d', fontWeight: 600, fontSize: '0.85rem' }}>{s.isBooked ? 'Booked' : 'Available'}</td>
+                            <td style={{ padding: '0.75rem', color: s.isBooked ? '#dc2626' : '#15803d', fontWeight: 600, fontSize: '0.85rem', background: s.isBooked ? '#fee2e2' : 'transparent' }}>{s.isBooked ? 'Booked' : 'Available'}</td>
                             <td style={{ padding: '0.75rem' }}>
                               <button onClick={() => deleteSlot(s._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#fee2e2'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
                             </td>
