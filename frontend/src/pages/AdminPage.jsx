@@ -491,15 +491,6 @@ export default function AdminPage({ token }) {
                   style={{ padding: '0.6rem 1.5rem', background: showBulkDelete ? '#f1f5f9' : '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
                   {showBulkDelete ? '✖ Cancel Bulk Delete' : '🗑️ Bulk Delete Slots'}
                 </button>
-                <button onClick={async () => {
-                  if (!confirm(`Delete ALL ${slots.length} slots? This cannot be undone.`)) return
-                  const r = await api('/slots/bulk-delete', { method: 'POST', body: JSON.stringify({}) })
-                  const d = await r.json()
-                  if (r.ok) { flash(`✅ ${d.message}`); fetchSlots() }
-                  else flash(`❌ ${d.message}`)
-                }} style={{ padding: '0.6rem 1.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #dc2626', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
-                  🗑️ Delete All Slots
-                </button>
               </div>
               {showBulkDelete && (
                 <div style={card}>
