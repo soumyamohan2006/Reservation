@@ -45,7 +45,7 @@ export default function CustodianLoginPage({ setUser, setToken, setRole }) {
         <section style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '0.75rem', padding: '2.5rem 2rem', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
 
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🧑💼</div>
+            
             <h1 style={{ color: '#1e293b', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Custodian Portal</h1>
             <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.4rem' }}>Sign in with your custodian account</p>
           </div>
