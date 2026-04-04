@@ -5,6 +5,35 @@ import Notification from '../models/Notification.js'
 import User from '../models/User.js'
 import { sendMail } from '../utils/mailer.js'
 
+// GET /api/bookings/my — user views their own bookings
+export const getMyBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate('hallId', 'name')
+      .populate('slotId', 'date timeSlot')
+      .sort({ createdAt: -1 })
+    return res.json(bookings)
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// DELETE /api/bookings/:id — user cancels their own pending booking
+export const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' })
+    if (booking.userId.toString() !== req.user.id)
+      return res.status(403).json({ message: 'Not authorized.' })
+    if (booking.status !== 'Pending')
+      return res.status(400).json({ message: 'Only pending bookings can be cancelled.' })
+    await Booking.findByIdAndDelete(req.params.id)
+    return res.json({ message: 'Booking cancelled.' })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
 // POST /api/bookings — user requests a booking
 export const createBooking = async (req, res) => {
   const { hallId, slotId, message } = req.body

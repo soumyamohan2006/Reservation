@@ -14,6 +14,7 @@ import SetPasswordPage from './pages/SetPasswordPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import CustodianPage from './pages/CustodianPage'
 import CustodianLoginPage from './pages/CustodianLoginPage'
+import MyBookingsPage from './pages/MyBookingsPage'
 
 function App() {
   const { pathname } = useLocation()
@@ -76,6 +77,7 @@ function App() {
                 <Link to="/" className="nav-link">Catalog</Link>
                 {role === 'admin' && <Link to="/admin" className="nav-link">Admin Panel</Link>}
                 {role === 'custodian' && <Link to="/custodian" className="nav-link">Custodian Panel</Link>}
+                {role !== 'admin' && role !== 'custodian' && <Link to="/my-bookings" className="nav-link">My Bookings</Link>}
                 {isPrivatePage && (
                   <Link to="/spaces" className="nav-link">
                     Spaces
@@ -155,6 +157,7 @@ function App() {
         <Route path="/spaces/:hallId" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" replace />} />
         <Route path="/reserve/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
         <Route path="/book/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
+        <Route path="/my-bookings" element={user ? <MyBookingsPage token={token} /> : <Navigate to="/login" replace />} />
         <Route path="/admin" element={role === 'admin' ? <AdminPage token={token} role={role} /> : <Navigate to="/admin-login" replace />} />
         <Route path="/custodian" element={role === 'custodian' ? <CustodianPage token={token} user={user} /> : <Navigate to="/custodian-login" replace />} />
         <Route path="/custodian-login" element={role === 'custodian' ? <Navigate to="/custodian" replace /> : <CustodianLoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
