@@ -66,7 +66,7 @@ export default function MyBookingsPage({ token }) {
                     <span>🕐 {b.slotId?.timeSlot}</span>
                     {timeNeeded && <span>⏱ {timeNeeded.replace('Time needed:', '').trim()}</span>}
                   </div>
-                  {b.status === 'Pending' && (
+                  {(b.status === 'Pending' || b.status === 'Approved') && (
                     <button
                       onClick={() => cancel(b._id)}
                       style={{ marginTop: '0.75rem', padding: '0.4rem 1rem', background: 'transparent', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}

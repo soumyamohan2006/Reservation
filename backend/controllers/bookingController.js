@@ -18,15 +18,17 @@ export const getMyBookings = async (req, res) => {
   }
 }
 
-// DELETE /api/bookings/:id — user cancels their own pending booking
+// DELETE /api/bookings/:id — user cancels their own pending or approved booking
 export const cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
     if (!booking) return res.status(404).json({ message: 'Booking not found.' })
     if (booking.userId.toString() !== req.user.id)
       return res.status(403).json({ message: 'Not authorized.' })
-    if (booking.status !== 'Pending')
-      return res.status(400).json({ message: 'Only pending bookings can be cancelled.' })
+    if (booking.status === 'Rejected')
+      return res.status(400).json({ message: 'Rejected bookings cannot be cancelled.' })
+    if (booking.status === 'Approved')
+      await Slot.findByIdAndUpdate(booking.slotId, { isBooked: false })
     await Booking.findByIdAndDelete(req.params.id)
     return res.json({ message: 'Booking cancelled.' })
   } catch (err) {
