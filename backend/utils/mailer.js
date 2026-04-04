@@ -1,6 +1,14 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+})
 
 export const sendMail = ({ to, subject, html }) =>
-  resend.emails.send({ from: 'Hall Booking <onboarding@resend.dev>', to, subject, html })
+  transporter.sendMail({ from: `"Hall Booking" <${process.env.EMAIL_USER}>`, to, subject, html })
