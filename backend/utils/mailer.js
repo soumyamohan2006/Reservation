@@ -1,37 +1,42 @@
-import nodemailer from 'nodemailer'
+import sgMail from '@sendgrid/mail'
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-})
+const sendGridApiKey = process.env.SENDGRID_API_KEY
+const defaultFromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_USER
+const defaultFromName = process.env.SENDGRID_FROM_NAME || 'Campus Hall Booking'
 
-// Verify the connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Nodemailer: Connection failed!', error.message)
-    console.error('Ensure EMAIL_USER and EMAIL_PASS are correct and that SMTP traffic is not blocked.')
-  } else {
-    console.log('✅ Nodemailer: Connection successful! Ready to send emails.')
+if (sendGridApiKey) {
+  sgMail.setApiKey(sendGridApiKey)
+  console.log('SendGrid mailer initialized.')
+} else {
+  console.error('SendGrid mailer is not configured. Missing SENDGRID_API_KEY.')
+}
+
+export const sendMail = async ({ to, subject, html, text, from }) => {
+  if (!sendGridApiKey) {
+    throw new Error('Missing SENDGRID_API_KEY.')
   }
-})
 
-export const sendMail = async ({ to, subject, html }) => {
+  if (!defaultFromEmail && !from) {
+    throw new Error('Missing SENDGRID_FROM_EMAIL.')
+  }
+
   try {
-    const info = await transporter.sendMail({
-      from: `"Campus Hall Booking" <${process.env.EMAIL_USER}>`,
+    const [response] = await sgMail.send({
       to,
       subject,
       html,
+      text,
+      from: from || {
+        email: defaultFromEmail,
+        name: defaultFromName,
+      },
     })
-    console.log(`📧 Email sent to ${to}: ${info.messageId}`)
-    return info
+
+    console.log(`Email sent to ${to} with status ${response.statusCode}`)
+    return response
   } catch (err) {
-    console.error(`❌ Email failed for ${to}:`, err.message)
-    throw err
+    const details = err.response?.body?.errors?.map((item) => item.message).join('; ') || err.message
+    console.error(`Email failed for ${to}:`, details)
+    throw new Error(details)
   }
 }
