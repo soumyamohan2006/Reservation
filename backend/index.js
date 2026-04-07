@@ -219,7 +219,13 @@ mongoose.connect(process.env.MONGO_URI)
       console.log(`Custodian seeded: ${process.env.CUSTODIAN_EMAIL}`)
     }
 
-    app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`))
+    app.listen(PORT, async () => {
+      console.log(`Backend running on http://localhost:${PORT}`)
+      // Delete past unbooked slots on startup
+      const today = new Date().toISOString().split('T')[0]
+      const { deletedCount } = await (await import('./models/Slot.js')).default.deleteMany({ isBooked: false, date: { $lt: today } })
+      if (deletedCount > 0) console.log(`Cleaned up ${deletedCount} past unbooked slot(s).`)
+    })
   })
   .catch((err) => {
     console.error('MongoDB connection failed:', err.message)
