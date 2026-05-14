@@ -46,6 +46,7 @@ export default function AdminPage({ token }) {
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkStartDate, setBulkStartDate] = useState('')
   const [bulkEndDate, setBulkEndDate] = useState('')
+  const [generatingSlots, setGeneratingSlots] = useState(false)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [deleteHallId, setDeleteHallId] = useState('')
   const [deleteTimeSlot, setDeleteTimeSlot] = useState('')
@@ -141,9 +142,10 @@ export default function AdminPage({ token }) {
       const timeSlot = (startTime && endTime) ? `${startTime}-${endTime}` : undefined
       const body = { hallId: slotHallId, startDate: bulkStartDate, endDate: bulkEndDate }
       if (timeSlot) body.timeSlot = timeSlot
-      
+      setGeneratingSlots(true)
       const r = await api('/slots', { method: 'POST', body: JSON.stringify(body) })
       const d = await r.json()
+      setGeneratingSlots(false)
       if (r.ok) { 
         flash(`✅ ${d.message || 'Slots generated.'}`)
         setBulkStartDate('')
@@ -459,7 +461,7 @@ export default function AdminPage({ token }) {
                     <div style={{ padding: '0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.5rem', color: '#1e40af', fontSize: '0.85rem' }}>
                       💡 <b>Bulk Mode:</b> Generates slots for every day between start and end date. Default time: 8AM-10PM
                     </div>
-                    <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={e => e.target.style.background = '#1d4ed8'} onMouseLeave={e => e.target.style.background = '#2563eb'}>🚀 Generate Slots</button>
+                    <button type="submit" disabled={generatingSlots} style={{ padding: '0.7rem 1.2rem', background: generatingSlots ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 700, cursor: generatingSlots ? 'not-allowed' : 'pointer', fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={e => { if (!generatingSlots) e.target.style.background = '#1d4ed8' }} onMouseLeave={e => { if (!generatingSlots) e.target.style.background = '#2563eb' }}>{generatingSlots ? 'Generating...' : 'Generate Slots'}</button>
                   </form>
                 ) : (
                   <form onSubmit={addSlot} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
