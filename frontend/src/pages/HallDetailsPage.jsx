@@ -42,7 +42,7 @@ function HallDetailsPage({ halls }) {
             <Link to="/" className="btn btn-light">
               Back
             </Link>
-            <Link to={`/login/${hall.id}`} className="btn btn-primary">
+            <Link to={`/reserve/${hall.id}`} className="btn btn-primary">
               Reserve Now
             </Link>
           </div>

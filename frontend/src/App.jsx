@@ -24,16 +24,10 @@ function App() {
   const isPrivatePage = isBookingPage || isSpacesPage
   const isLightLayout = isPrivatePage || isLoginPage
   const [headerNotice, setHeaderNotice] = useState('')
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
-  const [role, setRole] = useState(null)
+  const [user, setUser] = useState(() => localStorage.getItem('user') || null)
+  const [token, setToken] = useState(() => localStorage.getItem('token') || null)
+  const [role, setRole] = useState(() => localStorage.getItem('role') || null)
   const [dbHalls, setDbHalls] = useState([])
-
-  useEffect(() => {
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-  }, [])
 
   const fetchHalls = () => {
     fetch(`${API_URL}/api/halls`)
