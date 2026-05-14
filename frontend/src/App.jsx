@@ -24,10 +24,16 @@ function App() {
   const isPrivatePage = isBookingPage || isSpacesPage
   const isLightLayout = isPrivatePage || isLoginPage
   const [headerNotice, setHeaderNotice] = useState('')
-  const [user, setUser] = useState(() => localStorage.getItem('user') || null)
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null)
-  const [role, setRole] = useState(() => localStorage.getItem('role') || null)
+  const [user, setUser] = useState(null)
+  const [token, setToken] = useState(null)
+  const [role, setRole] = useState(null)
   const [dbHalls, setDbHalls] = useState([])
+
+  useEffect(() => {
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+  }, [])
 
   const fetchHalls = () => {
     fetch(`${API_URL}/api/halls`)
@@ -78,11 +84,6 @@ function App() {
                 {role === 'admin' && <Link to="/admin" className="nav-link">Admin Panel</Link>}
                 {role === 'custodian' && <Link to="/custodian" className="nav-link">Custodian Panel</Link>}
                 {role !== 'admin' && role !== 'custodian' && <Link to="/my-bookings" className="nav-link">My Bookings</Link>}
-                {isPrivatePage && (
-                  <Link to="/spaces" className="nav-link">
-                    Spaces
-                  </Link>
-                )}
               </div>
               <div className="nav-auth-btns">
                 <span className="nav-username">👤 {user}</span>
@@ -152,12 +153,12 @@ function App() {
         <Route path="/register" element={<RegisterPage setUser={setUser} setToken={setToken} setAppRole={setRole} />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/" element={<HomePage halls={halls} user={user} role={role} />} />
-        <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} /> : <Navigate to="/login" replace />} />
-        <Route path="/spaces" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" replace />} />
-        <Route path="/spaces/:hallId" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" replace />} />
-        <Route path="/reserve/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
-        <Route path="/book/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" replace />} />
-        <Route path="/my-bookings" element={user ? <MyBookingsPage token={token} /> : <Navigate to="/login" replace />} />
+        <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/spaces" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/spaces/:hallId" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/reserve/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/book/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/my-bookings" element={user ? <MyBookingsPage token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/admin" element={role === 'admin' ? <AdminPage token={token} role={role} /> : <Navigate to="/admin-login" replace />} />
         <Route path="/custodian" element={role === 'custodian' ? <CustodianPage token={token} user={user} /> : <Navigate to="/custodian-login" replace />} />
         <Route path="/custodian-login" element={role === 'custodian' ? <Navigate to="/custodian" replace /> : <CustodianLoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />

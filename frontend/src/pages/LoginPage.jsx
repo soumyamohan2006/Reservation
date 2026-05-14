@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { API_URL } from '../config'
 
 function LoginPage({ setUser, setToken, setRole }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { hallId } = useParams()
+  const from = location.state?.from || (hallId ? `/reserve/${hallId}` : '/')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -28,7 +30,7 @@ function LoginPage({ setUser, setToken, setRole }) {
       setUser(data.name)
       setToken(data.token)
       setRole(data.role)
-      navigate(hallId ? `/reserve/${hallId}` : '/')
+      navigate(data.role === 'admin' ? '/admin' : data.role === 'custodian' ? '/custodian' : from)
     } catch {
       setError('Server error. Is the backend running?')
     } finally {
