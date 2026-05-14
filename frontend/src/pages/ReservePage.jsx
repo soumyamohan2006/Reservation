@@ -17,6 +17,14 @@ function toMinutes(t) {
   return h * 60
 }
 
+function to12hr(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  const period = h < 12 ? 'AM' : 'PM'
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${displayH}:${String(m).padStart(2, '0')} ${period}`
+}
+
 function ReservePage({ halls, setHeaderNotice, token }) {
   const { hallId } = useParams()
   const hall = halls.find((item) => item.id === hallId)
@@ -100,6 +108,9 @@ function ReservePage({ halls, setHeaderNotice, token }) {
       return
     }
 
+    const startLabel = to12hr(neededStart)
+    const endLabel = to12hr(neededEnd)
+
     setIsBooking(true)
     setBookingError('')
     setBookingSuccess('')
@@ -110,12 +121,12 @@ function ReservePage({ halls, setHeaderNotice, token }) {
         body: JSON.stringify({
           hallId: resolvedHallId,
           slotId: selectedSlot._id,
-          message: `${eventTitle} — ${organizer} | Time needed: ${neededStart}–${neededEnd}`,
+          message: `${eventTitle} — ${organizer} | Time needed: ${startLabel}–${endLabel}`,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setBookingError(data.message); return }
-      setBookingSuccess(`Booking submitted for ${hall.name} on ${date} (${selectedSlot.timeSlot}: ${neededStart}–${neededEnd}). Awaiting approval.`)
+      setBookingSuccess(`Booking submitted for ${hall.name} on ${date} (${selectedSlot.timeSlot}: ${startLabel}–${endLabel}). Awaiting approval.`)
       setSelectedSlot(null)
       setNeededStart('')
       setNeededEnd('')
@@ -254,6 +265,11 @@ function ReservePage({ halls, setHeaderNotice, token }) {
                           </label>
                         </div>
                         {timeError && <p style={{ color: '#b91c1c', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{timeError}</p>}
+                        {neededStart && neededEnd && !timeError && (
+                          <p style={{ color: '#2563eb', fontSize: '0.82rem', margin: '0.5rem 0 0', fontWeight: 600 }}>
+                            ⏱ {to12hr(neededStart)} – {to12hr(neededEnd)}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
