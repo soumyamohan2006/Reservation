@@ -25,15 +25,10 @@ export const sendMail = async ({ to, subject, html, text, from }) => {
       to,
       subject,
       html,
-      text: text || subject,
+      text,
       from: from || {
         email: defaultFromEmail,
         name: defaultFromName,
-      },
-      replyTo: defaultFromEmail,
-      headers: {
-        'X-Priority': '3',
-        'X-Mailer': 'Campus Hall Booking System',
       },
     })
 
