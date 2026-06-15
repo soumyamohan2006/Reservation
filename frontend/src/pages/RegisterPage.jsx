@@ -29,9 +29,9 @@ function RegisterPage({ setUser, setToken, setAppRole }) {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.message); return }
-      localStorage.setItem('user', data.name)
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('role', data.role)
+      sessionStorage.setItem('user', data.name)
+      sessionStorage.setItem('token', data.token)
+      sessionStorage.setItem('role', data.role)
       setUser(data.name)
       setToken(data.token)
       setAppRole(data.role)

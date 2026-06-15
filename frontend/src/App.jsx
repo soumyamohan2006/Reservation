@@ -24,9 +24,9 @@ function App() {
   const isPrivatePage = isBookingPage || isSpacesPage
   const isLightLayout = isPrivatePage || isLoginPage
   const [headerNotice, setHeaderNotice] = useState('')
-  const [user, setUser] = useState(() => localStorage.getItem('user') || null)
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null)
-  const [role, setRole] = useState(() => localStorage.getItem('role') || null)
+  const [user, setUser] = useState(() => sessionStorage.getItem('user') || null)
+  const [token, setToken] = useState(() => sessionStorage.getItem('token') || null)
+  const [role, setRole] = useState(() => sessionStorage.getItem('role') || null)
   const [dbHalls, setDbHalls] = useState([])
 
   const fetchHalls = () => {
@@ -60,6 +60,9 @@ function App() {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
     localStorage.removeItem('role')
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
   }
 
   return (
