@@ -1,42 +1,35 @@
-import sgMail from '@sendgrid/mail'
+import nodemailer from 'nodemailer'
 
-const sendGridApiKey = process.env.SENDGRID_API_KEY
-const defaultFromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_USER
-const defaultFromName = process.env.SENDGRID_FROM_NAME || 'Campus Hall Booking'
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+})
 
-if (sendGridApiKey) {
-  sgMail.setApiKey(sendGridApiKey)
-  console.log('SendGrid mailer initialized.')
-} else {
-  console.error('SendGrid mailer is not configured. Missing SENDGRID_API_KEY.')
-}
-
-export const sendMail = async ({ to, subject, html, text, from }) => {
-  if (!sendGridApiKey) {
-    throw new Error('Missing SENDGRID_API_KEY.')
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ Nodemailer: Connection failed!', error.message)
+  } else {
+    console.log('✅ Nodemailer: Connection successful! Ready to send emails.')
   }
+})
 
-  if (!defaultFromEmail && !from) {
-    throw new Error('Missing SENDGRID_FROM_EMAIL.')
-  }
-
+export const sendMail = async ({ to, subject, html }) => {
   try {
-    const [response] = await sgMail.send({
+    const info = await transporter.sendMail({
+      from: `"Campus Hall Booking" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
-      text,
-      from: from || {
-        email: defaultFromEmail,
-        name: defaultFromName,
-      },
     })
-
-    console.log(`Email sent to ${to} with status ${response.statusCode}`)
-    return response
+    console.log(`📧 Email sent to ${to}: ${info.messageId}`)
+    return info
   } catch (err) {
-    const details = err.response?.body?.errors?.map((item) => item.message).join('; ') || err.message
-    console.error(`Email failed for ${to}:`, details)
-    throw new Error(details)
+    console.error(`❌ Email failed for ${to}:`, err.message)
+    throw err
   }
 }
