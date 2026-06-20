@@ -98,10 +98,11 @@ app.get('/api/booking-action/:id', async (req, res) => {
         console.error('Slot split error:', splitErr.message)
       }
 
-      sendMail({
-        to: booking.userId.email,
-        subject: 'Your Hall Booking Has Been Approved',
-        html: (() => {
+      try {
+        await sendMail({
+          to: booking.userId.email,
+          subject: 'Your Hall Booking Has Been Approved',
+          html: (() => {
           const bookingRef2 = `BK${booking._id.toString().slice(-4).toUpperCase()}`
           const [msgEvent2, msgTimeNeeded2] = (booking.message || '').split('|').map(s => s.trim())
           const exactTime2 = msgTimeNeeded2 ? msgTimeNeeded2.replace('Time needed:', '').trim() : booking.slotId?.timeSlot
@@ -139,7 +140,11 @@ app.get('/api/booking-action/:id', async (req, res) => {
             </div>
           `
         })(),
-      }).catch(err => console.error('Approval email error:', err.message))
+      })
+      console.log('✅ User approval email sent to:', booking.userId.email)
+    } catch (emailErr) {
+      console.error('❌ Approval email error:', emailErr.message)
+    }
     }
 
     const color = status === 'Approved' ? '#16a34a' : '#dc2626'
