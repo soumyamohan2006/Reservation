@@ -6,8 +6,8 @@ const TABS = ['Requests', 'Schedule', 'Mark Unavailable', 'History']
 const card = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
 const badge = (status) => ({
   padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-  background: status === 'Approved' ? '#f0fdf4' : status === 'Rejected' ? '#fef2f2' : '#fefce8',
-  color: status === 'Approved' ? '#15803d' : status === 'Rejected' ? '#b91c1c' : '#b45309',
+  background: status === 'Approved' ? '#f0fdf4' : status === 'Rejected' ? '#fef2f2' : status === 'CustodianApproved' ? '#f5f3ff' : '#fefce8',
+  color: status === 'Approved' ? '#15803d' : status === 'Rejected' ? '#b91c1c' : status === 'CustodianApproved' ? '#7c3aed' : '#b45309',
 })
 
 const TIME_POINTS = ['6AM','7AM','8AM','9AM','10AM','11AM','12PM','1PM','2PM','3PM','4PM','5PM','6PM','7PM','8PM','9PM','10PM']
@@ -229,7 +229,7 @@ export default function CustodianPage({ token, user }) {
               <div style={card}>
                 <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1.1rem' }}>🚫 Mark Slot as Unavailable</h2>
                 <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: 0 }}>Block a time slot so users cannot book it.</p>
-                <form onSubmit={markUnavailable} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '480px' }}>
+                <form onSubmit={markUnavailable} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
                   <label style={lbl}>Hall
                     <select value={hallId} onChange={e => setHallId(e.target.value)} style={inp}>
                       <option value="" disabled>Select a hall</option>
@@ -239,23 +239,21 @@ export default function CustodianPage({ token, user }) {
                   <label style={lbl}>Date
                     <input type="date" value={date} onChange={e => { setDate(e.target.value); setStartTime(''); setEndTime('') }} style={inp} />
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <label style={lbl}>Start Time
-                      <select value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }} style={inp}>
-                        <option value="" disabled>Start</option>
-                        {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </label>
-                    <label style={lbl}>End Time
-                      <select value={endTime} onChange={e => setEndTime(e.target.value)} disabled={!startTime} style={{ ...inp, color: startTime ? '#0f172a' : '#94a3b8' }}>
-                        <option value="" disabled>End</option>
-                        {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </label>
-                  </div>
-                  {slotMsg && <p style={{ color: slotMsg.startsWith('✅') ? '#15803d' : '#b91c1c', fontSize: '0.85rem', margin: 0 }}>{slotMsg}</p>}
-                  <button type="submit" style={{ padding: '0.7rem', background: '#2563eb', border: 'none', borderRadius: '0.5rem', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}>🚫 Mark as Unavailable</button>
+                  <label style={lbl}>Start Time
+                    <select value={startTime} onChange={e => { setStartTime(e.target.value); setEndTime('') }} style={inp}>
+                      <option value="" disabled>Start</option>
+                      {TIME_POINTS.slice(0, -1).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </label>
+                  <label style={lbl}>End Time
+                    <select value={endTime} onChange={e => setEndTime(e.target.value)} disabled={!startTime} style={{ ...inp, color: startTime ? '#0f172a' : '#94a3b8' }}>
+                      <option value="" disabled>End</option>
+                      {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </label>
+                  <button type="submit" style={{ padding: '0.7rem 1.2rem', background: '#2563eb', border: 'none', borderRadius: '0.5rem', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>🚫 Mark as Unavailable</button>
                 </form>
+                {slotMsg && <p style={{ color: slotMsg.startsWith('✅') ? '#15803d' : '#b91c1c', fontSize: '0.85rem', margin: '0.75rem 0 0' }}>{slotMsg}</p>}
                 <div style={{ marginTop: '2rem' }}>
                   <h3 style={{ color: '#475569', fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>BLOCKED SLOTS</h3>
                   {slots.filter(s => s.isBooked).length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No blocked slots.</p> : (

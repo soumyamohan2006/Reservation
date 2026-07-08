@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { API_URL } from '../config'
 
-const statusColor = (s) => s === 'Approved' ? '#15803d' : s === 'Rejected' ? '#b91c1c' : '#b45309'
-const statusBg = (s) => s === 'Approved' ? '#f0fdf4' : s === 'Rejected' ? '#fef2f2' : '#fffbeb'
+const statusColor = (s) => s === 'Approved' ? '#15803d' : s === 'Rejected' ? '#b91c1c' : s === 'CustodianApproved' ? '#7c3aed' : '#b45309'
+const statusBg = (s) => s === 'Approved' ? '#f0fdf4' : s === 'Rejected' ? '#fef2f2' : s === 'CustodianApproved' ? '#f5f3ff' : '#fffbeb'
+const statusLabel = (s) => s === 'CustodianApproved' ? 'Awaiting Principal' : s
 
 export default function MyBookingsPage({ token }) {
   const [bookings, setBookings] = useState([])
@@ -58,7 +59,7 @@ export default function MyBookingsPage({ token }) {
                       <div style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '0.25rem' }}>{event}</div>
                     </div>
                     <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, background: statusBg(b.status), color: statusColor(b.status), whiteSpace: 'nowrap' }}>
-                      {b.status}
+                      {statusLabel(b.status)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.75rem', fontSize: '0.82rem', color: '#475569', flexWrap: 'wrap' }}>
@@ -66,7 +67,7 @@ export default function MyBookingsPage({ token }) {
                     <span>🕐 {b.slotId?.timeSlot}</span>
                     {timeNeeded && <span>⏱ {timeNeeded.replace('Time needed:', '').trim()}</span>}
                   </div>
-                  {(b.status === 'Pending' || b.status === 'Approved') && (
+                  {(b.status === 'Pending' || b.status === 'Approved' || b.status === 'CustodianApproved') && (
                     <button
                       onClick={() => cancel(b._id)}
                       style={{ marginTop: '0.75rem', padding: '0.4rem 1rem', background: 'transparent', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}

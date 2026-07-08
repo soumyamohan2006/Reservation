@@ -54,12 +54,63 @@ app.get('/api/booking-action/:id', async (req, res) => {
       .populate('hallId', 'name')
       .populate('slotId', 'date timeSlot')
     if (!booking) return res.status(404).send('<h2>Booking not found.</h2>')
-    if (booking.status !== 'Pending') return res.send(`<h2>Booking already ${booking.status}.</h2>`)
+
+    const actor = req.query.actor || 'custodian'
+    const isPrincipalAction = actor === 'principal'
+
+    // Custodian action: must be Pending
+    if (!isPrincipalAction && booking.status !== 'Pending')
+      return res.send(`<h2>Booking already ${booking.status}. ${booking.requiresPrincipalApproval && booking.status === 'CustodianApproved' ? 'Awaiting Principal approval.' : ''}</h2>`)
+
+    // Principal action: must be CustodianApproved
+    if (isPrincipalAction && booking.status !== 'CustodianApproved')
+      return res.send(`<h2>Booking is ${booking.status}. No action needed.</h2>`)
 
     booking.status = status
     await booking.save()
 
     if (status === 'Approved') {
+      // Custodian approving a principal-required booking → escalate
+      if (!isPrincipalAction && booking.requiresPrincipalApproval) {
+        booking.status = 'CustodianApproved'
+        await booking.save()
+        // Email principal
+        const principalEmail = process.env.PRINCIPAL_EMAIL
+        if (principalEmail) {
+          const bookingRef2 = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+          const base2 = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}&actor=principal`
+          const [msgEvent2, msgTime2] = (booking.message || '').split('|').map(s => s.trim())
+          try {
+            await sendMail({
+              to: principalEmail,
+              subject: `Final Approval Required — ${bookingRef2}`,
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+                  <div style="background:#7c3aed;padding:1.25rem 1.5rem"><h2 style="color:#fff;margin:0;font-size:1.1rem">🏛️ Final Approval Required</h2></div>
+                  <div style="padding:1.5rem">
+                    <p style="color:#1e293b;margin:0 0 1rem">The custodian has approved this booking. Your final approval is required.</p>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                      <tr><td style="padding:0.5rem 0;color:#64748b;width:40%">Booking ID</td><td style="padding:0.5rem 0;font-weight:700;color:#7c3aed">${bookingRef2}</td></tr>
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Requested by</td><td style="padding:0.5rem 0;font-weight:600">${booking.userId?.name} (${booking.userId?.email})</td></tr>
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Facility</td><td style="padding:0.5rem 0;font-weight:600">${booking.hallId?.name}</td></tr>
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Event Type</td><td style="padding:0.5rem 0;font-weight:600">${booking.eventType}</td></tr>
+                      ${msgEvent2 ? `<tr><td style="padding:0.5rem 0;color:#64748b">Event Name</td><td style="padding:0.5rem 0;font-weight:600">${msgEvent2}</td></tr>` : ''}
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Date</td><td style="padding:0.5rem 0;font-weight:600">${booking.slotId?.date}</td></tr>
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Time Slot</td><td style="padding:0.5rem 0">${booking.slotId?.timeSlot}</td></tr>
+                      <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600">${msgTime2 || 'N/A'}</td></tr>
+                    </table>
+                    <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
+                      <a href="${base2}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">✅ Final Approve</a>
+                      <a href="${base2}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">❌ Reject</a>
+                    </div>
+                  </div>
+                </div>`,
+            })
+          } catch (e) { console.error('Principal email error:', e.message) }
+        }
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:3rem"><h1 style="color:#7c3aed">⏳ Escalated to Principal</h1><p>Booking <b>BK${booking._id.toString().slice(-4).toUpperCase()}</b> has been forwarded to the Principal for final approval.</p></body></html>`)
+      }
+
       await Slot.findByIdAndUpdate(booking.slotId, { isBooked: true })
 
       // Split remaining time into new available slot(s)
@@ -150,6 +201,7 @@ app.get('/api/booking-action/:id', async (req, res) => {
     const color = status === 'Approved' ? '#16a34a' : '#dc2626'
     const icon = status === 'Approved' ? '✅' : '❌'
     const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+    const approvedBy = isPrincipalAction ? 'Principal' : 'Custodian'
     return res.send(`
       <html>
       <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -175,7 +227,7 @@ app.get('/api/booking-action/:id', async (req, res) => {
             </tr>
           </table>
           <div style="padding:0.75rem 1rem;background:${status === 'Approved' ? '#f0fdf4' : '#fef2f2'};border:1px solid ${color};border-radius:0.5rem;color:${color};font-weight:700;font-size:0.95rem">
-            ${icon} This booking has been <b>${status}</b>
+            ${icon} This booking has been <b>${status}</b> by ${approvedBy}
           </div>
           <p style="color:#94a3b8;font-size:0.75rem;margin-top:1.25rem">You can close this tab.</p>
         </div>
@@ -222,6 +274,13 @@ mongoose.connect(process.env.MONGO_URI)
     if (!custodianExists) {
       await User.create({ name: 'Custodian', email: process.env.CUSTODIAN_EMAIL, password: process.env.CUSTODIAN_PASSWORD, role: 'custodian' })
       console.log(`Custodian seeded: ${process.env.CUSTODIAN_EMAIL}`)
+    }
+
+    // Seed principal if not exists
+    const principalExists = await User.findOne({ email: process.env.PRINCIPAL_EMAIL })
+    if (!principalExists && process.env.PRINCIPAL_EMAIL) {
+      await User.create({ name: 'Principal', email: process.env.PRINCIPAL_EMAIL, password: process.env.PRINCIPAL_PASSWORD, role: 'principal' })
+      console.log(`Principal seeded: ${process.env.PRINCIPAL_EMAIL}`)
     }
 
     app.listen(PORT, async () => {

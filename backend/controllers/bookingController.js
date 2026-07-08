@@ -27,7 +27,7 @@ export const cancelBooking = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized.' })
     if (booking.status === 'Rejected')
       return res.status(400).json({ message: 'Rejected bookings cannot be cancelled.' })
-    if (booking.status === 'Approved')
+    if (booking.status === 'Approved' || booking.status === 'CustodianApproved')
       await Slot.findByIdAndUpdate(booking.slotId, { isBooked: false })
     await Booking.findByIdAndDelete(req.params.id)
     return res.json({ message: 'Booking cancelled.' })
@@ -36,9 +36,11 @@ export const cancelBooking = async (req, res) => {
   }
 }
 
+const PRINCIPAL_APPROVAL_TYPES = ['Conference', 'Cultural Event', 'External Event']
+
 // POST /api/bookings — user requests a booking
 export const createBooking = async (req, res) => {
-  const { hallId, slotId, message } = req.body
+  const { hallId, slotId, message, eventType } = req.body
   if (!hallId || !slotId)
     return res.status(400).json({ message: 'hallId and slotId are required.' })
 
@@ -49,10 +51,13 @@ export const createBooking = async (req, res) => {
     if (slot.isBooked)
       return res.status(409).json({ message: 'Slot is already booked.' })
 
+    const requiresPrincipalApproval = PRINCIPAL_APPROVAL_TYPES.includes(eventType)
     const booking = await Booking.create({
       userId: req.user.id,
       hallId,
       slotId,
+      eventType: eventType || '',
+      requiresPrincipalApproval,
       message: message || '',
     })
 
@@ -105,6 +110,10 @@ export const createBooking = async (req, res) => {
                   <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Facility</td>
                   <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${hallName}</td>
                 </tr>
+                <tr>
+                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Type</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${eventType || '—'}</td>
+                </tr>
                 ${msgEvent ? `<tr>
                   <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Name</td>
                   <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent}</td>
@@ -131,6 +140,7 @@ export const createBooking = async (req, res) => {
                   <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested On</td>
                   <td style="padding:0.55rem 0;color:#0f172a">${requestedOn}</td>
                 </tr>
+                ${requiresPrincipalApproval ? `<tr><td colspan="2" style="padding:0.55rem 0"><span style="background:#fef9c3;color:#92400e;padding:0.3rem 0.75rem;border-radius:999px;font-size:0.78rem;font-weight:700">⚠️ Requires Principal approval after your approval</span></td></tr>` : ''}
               </table>
 
               <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
@@ -193,6 +203,49 @@ export const getCustodianBookings = async (req, res) => {
   }
 }
 
+// Helper: email principal for final approval after custodian approves
+const _sendPrincipalEmail = async (booking) => {
+  const principalEmail = process.env.PRINCIPAL_EMAIL
+  if (!principalEmail) return
+  const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
+  const base = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}&actor=principal`
+  const [msgEvent, msgTime] = (booking.message || '').split('|').map(s => s.trim())
+  try {
+    await sendMail({
+      to: principalEmail,
+      subject: `Final Approval Required — ${bookingRef}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+          <div style="background:#7c3aed;padding:1.25rem 1.5rem">
+            <h2 style="color:#fff;margin:0;font-size:1.1rem">🏛️ Final Approval Required</h2>
+          </div>
+          <div style="padding:1.5rem">
+            <p style="color:#1e293b;margin:0 0 1rem">The custodian has approved this booking. Your final approval is required.</p>
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+              <tr><td style="padding:0.5rem 0;color:#64748b;width:40%">Booking ID</td><td style="padding:0.5rem 0;font-weight:700;color:#7c3aed">${bookingRef}</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Requested by</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${booking.userId?.name} (${booking.userId?.email})</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Facility</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${booking.hallId?.name}</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Event Type</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${booking.eventType}</td></tr>
+              ${msgEvent ? `<tr><td style="padding:0.5rem 0;color:#64748b">Event Name</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgEvent}</td></tr>` : ''}
+              <tr><td style="padding:0.5rem 0;color:#64748b">Date</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${booking.slotId?.date}</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Time Slot</td><td style="padding:0.5rem 0;color:#0f172a">${booking.slotId?.timeSlot}</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgTime || 'N/A'}</td></tr>
+            </table>
+            <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
+              <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">✅ Final Approve</a>
+              <a href="${base}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">❌ Reject</a>
+            </div>
+            <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
+          </div>
+        </div>
+      `,
+    })
+    console.log(`📧 Principal approval email sent for ${bookingRef}`)
+  } catch (err) {
+    console.error('Principal email error:', err.message)
+  }
+}
+
 // PUT /api/bookings/:id — custodian/admin approves or rejects
 export const updateBookingStatus = async (req, res) => {
   const { status } = req.body
@@ -205,6 +258,14 @@ export const updateBookingStatus = async (req, res) => {
       .populate('hallId', 'name')
       .populate('slotId', 'date timeSlot')
     if (!booking) return res.status(404).json({ message: 'Booking not found.' })
+
+    // Custodian approving a principal-required booking → escalate
+    if (status === 'Approved' && booking.requiresPrincipalApproval && booking.status === 'Pending') {
+      booking.status = 'CustodianApproved'
+      await booking.save()
+      await _sendPrincipalEmail(booking)
+      return res.json({ message: 'Booking escalated to Principal for final approval.', booking })
+    }
 
     booking.status = status
     await booking.save()

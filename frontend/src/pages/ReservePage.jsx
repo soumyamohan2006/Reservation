@@ -25,6 +25,9 @@ function to12hr(t) {
   return `${displayH}:${String(m).padStart(2, '0')} ${period}`
 }
 
+const EVENT_TYPES = ['Internal Meeting', 'Workshop', 'Seminar', 'Conference', 'Cultural Event', 'External Event']
+const PRINCIPAL_TYPES = ['Conference', 'Cultural Event', 'External Event']
+
 function ReservePage({ halls, setHeaderNotice, token }) {
   const { hallId } = useParams()
   const hall = halls.find((item) => item.id === hallId)
@@ -33,6 +36,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
   const [date, setDate] = useState('')
   const [organizer, setOrganizer] = useState('')
   const [eventTitle, setEventTitle] = useState('')
+  const [eventType, setEventType] = useState('')
   const [availableSlots, setAvailableSlots] = useState([])
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [neededStart, setNeededStart] = useState('')
@@ -94,7 +98,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
   }, [selectedSlot])
 
   const onBook = async () => {
-    if (!organizer || !eventTitle) { setBookingError('Please enter organizer name and event title.'); return }
+    if (!organizer || !eventTitle || !eventType) { setBookingError('Please fill in all event details.'); return }
     if (!selectedSlot) { setBookingError('Please select a time slot.'); return }
     if (!neededStart || !neededEnd) { setBookingError('Please enter your required start and end time.'); return }
 
@@ -121,6 +125,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
         body: JSON.stringify({
           hallId: resolvedHallId,
           slotId: selectedSlot._id,
+          eventType,
           message: `${eventTitle} — ${organizer} | Time needed: ${startLabel}–${endLabel}`,
         }),
       })
@@ -176,10 +181,24 @@ function ReservePage({ halls, setHeaderNotice, token }) {
             </label>
           </div>
 
-          <label className="form-field form-span-full">
-            Select Date
-            <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setBookingError(''); setBookingSuccess('') }} />
-          </label>
+          <div className="booking-two-col">
+            <label className="form-field">
+              Event Type
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} style={{ padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.95rem', background: '#fff', color: eventType ? '#0f172a' : '#94a3b8' }}>
+                <option value="" disabled>Select event type</option>
+                {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              {eventType && PRINCIPAL_TYPES.includes(eventType) && (
+                <span style={{ fontSize: '0.78rem', color: '#92400e', background: '#fef9c3', padding: '0.2rem 0.6rem', borderRadius: '999px', marginTop: '0.3rem', display: 'inline-block' }}>
+                  ⚠️ Requires Principal approval
+                </span>
+              )}
+            </label>
+            <label className="form-field">
+              Select Date
+              <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setBookingError(''); setBookingSuccess('') }} />
+            </label>
+          </div>
         </form>
       </section>
 
