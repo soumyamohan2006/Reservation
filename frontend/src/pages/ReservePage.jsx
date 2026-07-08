@@ -184,7 +184,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
           <div className="booking-two-col">
             <label className="form-field">
               Event Type
-              <select value={eventType} onChange={(e) => setEventType(e.target.value)} style={{ padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.95rem', background: '#fff', color: eventType ? '#0f172a' : '#94a3b8' }}>
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} style={{ padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.95rem', background: '#fff', color: eventType ? '#0f172a' : '#94a3b8', width: '100%' }}>
                 <option value="" disabled>Select event type</option>
                 {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
