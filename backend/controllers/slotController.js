@@ -163,6 +163,16 @@ export const bulkDeleteSlots = async (req, res) => {
   }
 }
 
+export const blockSlot = async (req, res) => {
+  try {
+    const slot = await Slot.findByIdAndUpdate(req.params.id, { isBooked: true, lockedBy: null, lockedUntil: null }, { new: true })
+    if (!slot) return res.status(404).json({ message: 'Slot not found.' })
+    return res.json({ message: 'Slot blocked.', slot })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
 // Fixes slots where hallId was saved as a plain string instead of ObjectId
 export const fixSlotHallIds = async (_req, res) => {
   try {

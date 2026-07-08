@@ -88,14 +88,32 @@ export default function CustodianPage({ token, user }) {
     if (!hallId || !date || !startTime || !endTime) { setSlotMsg('All fields are required.'); return }
     setSlotMsg('')
     try {
-      const res = await fetch(`${API_URL}/api/slots`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
-        body: JSON.stringify({ hallId, date, timeSlot: `${startTime}-${endTime}`, isBooked: true }),
+      // Find existing slot and mark as booked, or create new one
+      const findRes = await fetch(`${API_URL}/api/slots?hallId=${hallId}&date=${date}`, {
+        headers: { Authorization: `Bearer ${tk()}` }
       })
-      const data = await res.json()
-      if (res.ok) { setSlotMsg('✅ Slot marked as unavailable.'); setDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
-      else setSlotMsg(`❌ ${data.message}`)
+      const allSlots = await findRes.json()
+      const timeSlot = `${startTime}-${endTime}`
+      const existing = Array.isArray(allSlots) ? allSlots.find(s => s.hallId?._id === hallId && s.date === date && s.timeSlot === timeSlot) : null
+
+      if (existing) {
+        const res = await fetch(`${API_URL}/api/slots/${existing._id}/block`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
+        })
+        const data = await res.json()
+        if (res.ok) { setSlotMsg('✅ Slot marked as unavailable.'); setDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
+        else setSlotMsg(`❌ ${data.message}`)
+      } else {
+        const res = await fetch(`${API_URL}/api/slots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` },
+          body: JSON.stringify({ hallId, date, timeSlot, isBooked: true }),
+        })
+        const data = await res.json()
+        if (res.ok) { setSlotMsg('✅ Slot marked as unavailable.'); setDate(''); setStartTime(''); setEndTime(''); fetchSlots() }
+        else setSlotMsg(`❌ ${data.message}`)
+      }
     } catch { setSlotMsg('❌ Server error.') }
   }
 
