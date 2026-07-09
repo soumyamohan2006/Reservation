@@ -15,10 +15,11 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import CustodianPage from './pages/CustodianPage'
 import CustodianLoginPage from './pages/CustodianLoginPage'
 import MyBookingsPage from './pages/MyBookingsPage'
+import AvailabilityPage from './pages/AvailabilityPage'
 
 function App() {
   const { pathname } = useLocation()
-  const isBookingPage = pathname.startsWith('/reserve/') || pathname.startsWith('/book/')
+  const isBookingPage = pathname.startsWith('/reserve/') || pathname.startsWith('/book/') || pathname.startsWith('/availability/')
   const isSpacesPage = pathname.startsWith('/spaces')
   const isLoginPage = pathname.startsWith('/login') || pathname.startsWith('/register')
   const isPrivatePage = isBookingPage || isSpacesPage
@@ -150,9 +151,10 @@ function App() {
         <Route path="/register" element={<RegisterPage setUser={setUser} setToken={setToken} setAppRole={setRole} />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/" element={<HomePage halls={halls} user={user} role={role} />} />
-        <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/spaces" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/spaces/:hallId" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
+        <Route path="/availability/:hallId" element={user ? <AvailabilityPage halls={halls} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/reserve/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/book/:hallId" element={user ? <ReservePage halls={halls} setHeaderNotice={setHeaderNotice} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/my-bookings" element={user ? <MyBookingsPage token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />

@@ -163,6 +163,43 @@ export const bulkDeleteSlots = async (req, res) => {
   }
 }
 
+export const getAllSlotsForDate = async (req, res) => {
+  const { hallId, date } = req.query
+  if (!hallId || !date) return res.status(400).json({ message: 'hallId and date are required.' })
+  try {
+    const Booking = (await import('../models/Booking.js')).default
+    const slots = await Slot.find({ hallId, date })
+    const pendingBookings = await Booking.find({ hallId, slotId: { $in: slots.map(s => s._id) }, status: { $in: ['Pending', 'CustodianApproved'] } })
+    const pendingSlotIds = new Set(pendingBookings.map(b => b.slotId.toString()))
+    const result = slots.map(s => ({
+      _id: s._id,
+      timeSlot: s.timeSlot,
+      date: s.date,
+      status: s.isBooked ? 'Booked' : pendingSlotIds.has(s._id.toString()) ? 'Pending' : 'Available'
+    }))
+    result.sort((a, b) => {
+      const toMin = t => { const m = t.match(/^(\d+)(AM|PM)/i); if (!m) return 0; let h = parseInt(m[1]); if (m[2].toUpperCase() === 'PM' && h !== 12) h += 12; if (m[2].toUpperCase() === 'AM' && h === 12) h = 0; return h * 60 }
+      return toMin(a.timeSlot.split('-')[0]) - toMin(b.timeSlot.split('-')[0])
+    })
+    return res.json(result)
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+export const getBookedSlots = async (req, res) => {
+  const { hallId, date } = req.query
+  try {
+    const filter = { isBooked: true }
+    if (hallId) filter.hallId = hallId
+    if (date) filter.date = date
+    const slots = await Slot.find(filter).select('timeSlot date hallId')
+    return res.json(slots)
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
 export const blockSlot = async (req, res) => {
   try {
     const slot = await Slot.findByIdAndUpdate(req.params.id, { isBooked: true, lockedBy: null, lockedUntil: null }, { new: true })

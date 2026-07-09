@@ -24,7 +24,7 @@ function HallCard({ hall }) {
 
         <div className="card-actions">
           <Link to={`/halls/${hall.id}`} className="btn btn-light">View Details</Link>
-          <Link to={`/reserve/${hall.id}`} className="btn btn-primary">Reserve</Link>
+          <Link to={`/availability/${hall.id}`} className="btn btn-primary">Reserve</Link>
         </div>
       </div>
     </article>

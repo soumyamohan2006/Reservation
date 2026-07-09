@@ -1,145 +1,122 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { API_URL } from '../config'
 
-function toMinutes(t) {
-  if (!t) return 0
-  if (t.includes(':')) {
-    const [h, m] = t.split(':').map(Number)
-    return h * 60 + m
-  }
-  const match = t.match(/^(\d+)(AM|PM)$/i)
-  if (!match) return 0
-  let h = parseInt(match[1])
-  const p = match[2].toUpperCase()
-  if (p === 'PM' && h !== 12) h += 12
-  if (p === 'AM' && h === 12) h = 0
-  return h * 60
+const EVENT_TYPES = ['Internal Meeting', 'Workshop', 'Seminar', 'Conference', 'Cultural Event', 'External Event']
+const PRINCIPAL_TYPES = ['Conference', 'Cultural Event', 'External Event']
+const EQUIPMENT = ['Projector', 'Microphone', 'Sound System', 'Podium', 'AC']
+
+function fmtSlot(ts) {
+  if (!ts) return ''
+  const toL = t => { const m = t.trim().match(/^(\d+)(?::(\d+))?(AM|PM)$/i); if (!m) return t; return `${m[1].padStart(2,'0')}:${(m[2]||'00').padStart(2,'0')} ${m[3].toUpperCase()}` }
+  const p = ts.match(/^(.+?)-(.+)$/); return p ? `${toL(p[1])} – ${toL(p[2])}` : ts
+}
+
+function fmtDate(d) {
+  if (!d) return ''
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 function to12hr(t) {
   if (!t) return ''
   const [h, m] = t.split(':').map(Number)
-  const period = h < 12 ? 'AM' : 'PM'
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${displayH}:${String(m).padStart(2, '0')} ${period}`
+  const p = h < 12 ? 'AM' : 'PM'
+  const dh = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${dh}:${String(m).padStart(2, '0')} ${p}`
 }
 
-const EVENT_TYPES = ['Internal Meeting', 'Workshop', 'Seminar', 'Conference', 'Cultural Event', 'External Event']
-const PRINCIPAL_TYPES = ['Conference', 'Cultural Event', 'External Event']
+function toMinutes(t) {
+  if (!t) return 0
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function slotToMinutes(t) {
+  const m = t.trim().match(/^(\d+)(?::(\d+))?(AM|PM)$/i)
+  if (!m) return 0
+  let h = parseInt(m[1])
+  if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12
+  if (m[3].toUpperCase() === 'AM' && h === 12) h = 0
+  return h * 60 + parseInt(m[2] || 0)
+}
+
+const inp = { padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', color: '#0f172a', background: '#f8fafc', width: '100%', boxSizing: 'border-box' }
+const lbl = { display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#475569', fontWeight: 600, fontSize: '0.875rem' }
 
 function ReservePage({ halls, setHeaderNotice, token }) {
   const { hallId } = useParams()
-  const hall = halls.find((item) => item.id === hallId)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const hall = halls.find(h => h.id === hallId)
   const resolvedHallId = hall?.mongoId || hallId
 
-  const [date, setDate] = useState('')
+  const preDate = location.state?.date || ''
+  const preSlot = location.state?.slot || null
+  // Multi-date support
+  const selections = location.state?.selections || (preDate && preSlot ? [{ date: preDate, slot: preSlot }] : [])
+
   const [organizer, setOrganizer] = useState('')
   const [eventTitle, setEventTitle] = useState('')
   const [eventType, setEventType] = useState('')
-  const [availableSlots, setAvailableSlots] = useState([])
-  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [participants, setParticipants] = useState('')
   const [neededStart, setNeededStart] = useState('')
   const [neededEnd, setNeededEnd] = useState('')
   const [timeError, setTimeError] = useState('')
-  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [equipment, setEquipment] = useState([])
+  const [isBooking, setIsBooking] = useState(false)
   const [bookingError, setBookingError] = useState('')
   const [bookingSuccess, setBookingSuccess] = useState('')
-  const [isBooking, setIsBooking] = useState(false)
 
-  useEffect(() => {
-    if (!resolvedHallId || !date || !token) return
-    setSelectedSlot(null)
-    setNeededStart('')
-    setNeededEnd('')
-    setTimeError('')
-    setBookingError('')
-    setBookingSuccess('')
-    setLoadingSlots(true)
-    fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => setAvailableSlots(Array.isArray(data) ? data : []))
-      .catch(() => setAvailableSlots([]))
-      .finally(() => setLoadingSlots(false))
-  }, [resolvedHallId, date, token])
-
-  const onSlotClick = (slot) => {
-    const isSame = selectedSlot?._id === slot._id
-    // Unlock previous slot
-    if (selectedSlot && !isSame) {
-      fetch(`${API_URL}/api/slots/${selectedSlot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-    }
-    if (isSame) {
-      // Deselect — unlock
-      fetch(`${API_URL}/api/slots/${slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-      setSelectedSlot(null)
-    } else {
-      // Lock new slot
-      fetch(`${API_URL}/api/slots/${slot._id}/lock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => { if (d.message) setBookingError(d.message) })
-      setSelectedSlot(slot)
-    }
-    setNeededStart('')
-    setNeededEnd('')
-    setTimeError('')
-    setBookingError('')
-  }
-
-  // Unlock slot on page leave
   useEffect(() => {
     return () => {
-      if (selectedSlot) {
-        fetch(`${API_URL}/api/slots/${selectedSlot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-      }
+      selections.forEach(s => {
+        fetch(`${API_URL}/api/slots/${s.slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      })
     }
-  }, [selectedSlot])
+  }, [])
+
+  const toggleEquipment = (item) => setEquipment(prev => prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item])
+
+  const validateTime = (start, end) => {
+    if (!start || !end) return
+    const slotParts = selections[0]?.slot?.timeSlot.match(/^(.+?)-(.+)$/)
+    if (!slotParts) return
+    const slotStart = slotToMinutes(slotParts[1])
+    const slotEnd = slotToMinutes(slotParts[2])
+    const s = toMinutes(start), e = toMinutes(end)
+    if (s >= e) { setTimeError('End time must be after start time.'); return }
+    if (s < slotStart || e > slotEnd) { setTimeError(`Time must be within the selected slot.`); return }
+    setTimeError('')
+  }
 
   const onBook = async () => {
-    if (!organizer || !eventTitle || !eventType) { setBookingError('Please fill in all event details.'); return }
-    if (!selectedSlot) { setBookingError('Please select a time slot.'); return }
-    if (!neededStart || !neededEnd) { setBookingError('Please enter your required start and end time.'); return }
-
-    const [slotS, slotE] = selectedSlot.timeSlot.split('-')
-    const needStartMin = toMinutes(neededStart)
-    const needEndMin = toMinutes(neededEnd)
-
-    if (needStartMin >= needEndMin) { setTimeError('End time must be after start time.'); return }
-    if (needStartMin < toMinutes(slotS) || needEndMin > toMinutes(slotE)) {
-      setTimeError(`Your time must be within ${selectedSlot.timeSlot}.`)
-      return
-    }
-
-    const startLabel = to12hr(neededStart)
-    const endLabel = to12hr(neededEnd)
+    if (!organizer || !eventTitle || !eventType || !participants) { setBookingError('Please fill in all required fields.'); return }
+    if (!neededStart || !neededEnd) { setBookingError('Please enter your needed start and end time.'); return }
+    if (timeError) { setBookingError(timeError); return }
+    if (!selections.length) { setBookingError('No slot selected.'); return }
 
     setIsBooking(true)
     setBookingError('')
     setBookingSuccess('')
     try {
-      const res = await fetch(`${API_URL}/api/bookings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          hallId: resolvedHallId,
-          slotId: selectedSlot._id,
-          eventType,
-          message: `${eventTitle} — ${organizer} | Time needed: ${startLabel}–${endLabel}`,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setBookingError(data.message); return }
-      setBookingSuccess(`Booking submitted for ${hall.name} on ${date} (${selectedSlot.timeSlot}: ${startLabel}–${endLabel}). Awaiting approval.`)
-      setSelectedSlot(null)
-      setNeededStart('')
-      setNeededEnd('')
-      setTimeError('')
-      setHeaderNotice(`Your booking request for ${hall.name} on ${date} has been submitted successfully. Awaiting approval.`)
-      fetch(`${API_URL}/api/slots/available?hallId=${resolvedHallId}&date=${date}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()).then(d => setAvailableSlots(Array.isArray(d) ? d : []))
+      const equipmentStr = equipment.length > 0 ? ` | Equipment: ${equipment.join(', ')}` : ''
+      const results = await Promise.all(selections.map(({ slot }) =>
+        fetch(`${API_URL}/api/bookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            hallId: resolvedHallId,
+            slotId: slot._id,
+            eventType,
+            message: `${eventTitle} — ${organizer} | Participants: ${participants} | Time needed: ${to12hr(neededStart)}–${to12hr(neededEnd)}${equipmentStr}`,
+          }),
+        }).then(r => r.json())
+      ))
+      const failed = results.filter(r => r.message && !r._id)
+      if (failed.length) { setBookingError(failed[0].message); return }
+      setBookingSuccess(`${selections.length} booking(s) submitted! Awaiting approval.`)
+      setHeaderNotice(`Your booking request for ${hall.name} has been submitted successfully.`)
+      setTimeout(() => navigate('/my-bookings'), 2000)
     } catch {
       setBookingError('Server error. Please try again.')
     } finally {
@@ -147,176 +124,113 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     }
   }
 
-  if (!hall) {
-    return (
-      <main className="subpage">
-        <div className="detail-card">
-          <div className="detail-content">
-            <h1 className="detail-title">Hall not found</h1>
-            <p className="detail-copy">Please return to catalog and choose a valid hall.</p>
-            <div className="detail-actions">
-              <Link to="/" className="btn btn-primary">Back to Catalog</Link>
-            </div>
-          </div>
-        </div>
-      </main>
-    )
+  if (!hall) return (
+    <main className="subpage"><div className="detail-card"><div className="detail-content">
+      <h1 className="detail-title">Hall not found</h1>
+      <Link to="/" className="btn btn-primary">Back to Catalog</Link>
+    </div></div></main>
+  )
+
+  if (!selections.length) {
+    navigate(`/availability/${hallId}`, { replace: true })
+    return null
   }
 
   return (
-    <main className="booking-page" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-      <section className="booking-card">
-        <h1 className="booking-title" style={{ color: '#000000' }}>Book {hall.name}</h1>
-        <p className="booking-subtitle" style={{ color: '#475569' }}>Fill in your details, pick a date and select an available slot.</p>
+    <main style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: '680px', margin: '0 auto' }}>
 
-        <form className="booking-form" onSubmit={(e) => e.preventDefault()}>
-          <div className="booking-two-col">
-            <label className="form-field">
-              Organizer Name
-              <input type="text" placeholder="Your name" value={organizer} onChange={(e) => setOrganizer(e.target.value)} />
-            </label>
-            <label className="form-field">
-              Event Title
-              <input type="text" placeholder="e.g. Annual General Meeting" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} />
-            </label>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.9rem', padding: 0, marginBottom: '1rem' }}>← Back</button>
+
+        {/* Pre-filled summary */}
+        <div style={{ background: '#eff6ff', border: '2px solid #2563eb', borderRadius: '0.75rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.75rem' }}>Hall — {hall.name}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem' }}>
+            {selections.map(s => (
+              <div key={s.date} style={{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '0.5rem', padding: '0.6rem 0.85rem' }}>
+                <p style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700, margin: '0 0 0.15rem' }}>{fmtDate(s.date)}</p>
+                <p style={{ color: '#1e40af', fontWeight: 700, fontSize: '0.875rem', margin: 0 }}>{fmtSlot(s.slot.timeSlot)}</p>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <div className="booking-two-col">
-            <label className="form-field">
-              Event Type
-              <select value={eventType} onChange={(e) => setEventType(e.target.value)} style={{ padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.95rem', background: '#fff', color: eventType ? '#0f172a' : '#94a3b8', width: '100%' }}>
+        {/* Form */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+          <h2 style={{ color: '#0f172a', fontWeight: 800, fontSize: '1.2rem', margin: '0 0 1.5rem' }}>Booking Details</h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <label style={lbl}>
+              Organizer Name *
+              <input style={inp} placeholder="Your full name" value={organizer} onChange={e => setOrganizer(e.target.value)} />
+            </label>
+            <label style={lbl}>
+              Event Title *
+              <input style={inp} placeholder="e.g. Annual Tech Fest" value={eventTitle} onChange={e => setEventTitle(e.target.value)} />
+            </label>
+            <label style={lbl}>
+              Event Type *
+              <select style={{ ...inp, color: eventType ? '#0f172a' : '#94a3b8' }} value={eventType} onChange={e => setEventType(e.target.value)}>
                 <option value="" disabled>Select event type</option>
                 {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
               {eventType && PRINCIPAL_TYPES.includes(eventType) && (
-                <span style={{ fontSize: '0.78rem', color: '#92400e', background: '#fef9c3', padding: '0.2rem 0.6rem', borderRadius: '999px', marginTop: '0.3rem', display: 'inline-block' }}>
-                  ⚠️ Requires Principal approval
-                </span>
+                <span style={{ fontSize: '0.75rem', color: '#92400e', background: '#fef9c3', padding: '0.2rem 0.5rem', borderRadius: '999px', display: 'inline-block', marginTop: '0.25rem' }}>⚠️ Requires Principal approval</span>
               )}
             </label>
-            <label className="form-field">
-              Select Date
-              <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setBookingError(''); setBookingSuccess('') }} />
+            <label style={lbl}>
+              Expected Participants *
+              <input style={inp} type="number" min="1" placeholder="e.g. 150" value={participants} onChange={e => setParticipants(e.target.value)} />
             </label>
           </div>
-        </form>
-      </section>
 
-      {date && (
-        <section className="booking-card" style={{ marginTop: '1rem' }}>
-          <h2 className="booking-title" style={{ color: '#000000', margin: '0 0 0.25rem' }}>Available Slots</h2>
-          <p style={{ color: '#475569', fontSize: '0.875rem', margin: '0 0 1.25rem' }}>{date} • {hall.name}</p>
+          {/* Needed Time */}
+          <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+            <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.875rem', margin: '0 0 0.75rem' }}>⏱ Time Needed <span style={{ color: '#94a3b8', fontWeight: 400 }}>(within selected slot)</span></p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <label style={lbl}>
+                Start Time *
+                <input type="time" style={inp} value={neededStart} onChange={e => { setNeededStart(e.target.value); validateTime(e.target.value, neededEnd) }} />
+              </label>
+              <label style={lbl}>
+                End Time *
+                <input type="time" style={inp} value={neededEnd} onChange={e => { setNeededEnd(e.target.value); validateTime(neededStart, e.target.value) }} />
+              </label>
+            </div>
+            {timeError && <p style={{ color: '#b91c1c', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{timeError}</p>}
+            {neededStart && neededEnd && !timeError && (
+              <p style={{ color: '#2563eb', fontSize: '0.82rem', margin: '0.5rem 0 0', fontWeight: 600 }}>✓ {to12hr(neededStart)} – {to12hr(neededEnd)}</p>
+            )}
+          </div>
 
-          {loadingSlots ? (
-            <p style={{ color: '#475569' }}>Loading slots...</p>
-          ) : availableSlots.length === 0 ? (
-            <p style={{ color: '#475569' }}>No available slots for this date. Try another date.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: '0.6rem' }}>
-              {availableSlots.map((slot) => {
-                const selected = selectedSlot?._id === slot._id
+          {/* Equipment */}
+          <div style={{ marginTop: '1.25rem' }}>
+            <p style={{ color: '#475569', fontWeight: 600, fontSize: '0.875rem', margin: '0 0 0.75rem' }}>Equipment Required</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+              {EQUIPMENT.map(item => {
+                const checked = equipment.includes(item)
                 return (
-                  <div key={slot._id}>
-                    <div
-                      onClick={() => onSlotClick(slot)}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '0.9rem 1rem',
-                        background: selected ? '#dbeafe' : '#ffffff',
-                        border: selected ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                        borderRadius: selected ? '0.5rem 0.5rem 0 0' : '0.5rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                          width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0,
-                          border: selected ? '2px solid #2563eb' : '2px solid #cbd5e1',
-                          background: selected ? '#2563eb' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: selected ? 'white' : '#475569', fontSize: '0.7rem', fontWeight: 'bold',
-                        }}>
-                          {selected && '✓'}
-                        </div>
-                        <span style={{ color: '#000000', fontSize: '1rem', fontWeight: 600 }}>
-                          {slot.timeSlot}
-                        </span>
-                      </div>
-                      {selected && (
-                        <span style={{ color: '#2563eb', fontSize: '0.8rem', fontWeight: 600 }}>SELECTED</span>
-                      )}
-                    </div>
-
-                    {selected && (
-                      <div style={{
-                        padding: '1rem',
-                        background: '#f8fafc',
-                        border: '2px solid #2563eb',
-                        borderTop: 'none',
-                        borderRadius: '0 0 0.5rem 0.5rem',
-                      }}>
-                        <p style={{ color: '#1e293b', fontSize: '0.82rem', fontWeight: 600, margin: '0 0 0.75rem' }}>
-                          Enter the exact time you need within <span style={{ color: '#000000' }}>{slot.timeSlot}</span>
-                        </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#1e293b', fontSize: '0.82rem', fontWeight: 600 }}>
-                            Start Time
-                            <input
-                              type="time"
-                              value={neededStart}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => { setNeededStart(e.target.value); setTimeError('') }}
-                              style={{ padding: '0.5rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#000000', fontSize: '0.9rem' }}
-                            />
-                          </label>
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: '#1e293b', fontSize: '0.82rem', fontWeight: 600 }}>
-                            End Time
-                            <input
-                              type="time"
-                              value={neededEnd}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => { setNeededEnd(e.target.value); setTimeError('') }}
-                              style={{ padding: '0.5rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#000000', fontSize: '0.9rem' }}
-                            />
-                          </label>
-                        </div>
-                        {timeError && <p style={{ color: '#b91c1c', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{timeError}</p>}
-                        {neededStart && neededEnd && !timeError && (
-                          <p style={{ color: '#2563eb', fontSize: '0.82rem', margin: '0.5rem 0 0', fontWeight: 600 }}>
-                            ⏱ {to12hr(neededStart)} – {to12hr(neededEnd)}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <label key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', border: `1px solid ${checked ? '#2563eb' : '#cbd5e1'}`, borderRadius: '999px', background: checked ? '#eff6ff' : '#f8fafc', cursor: 'pointer', fontSize: '0.875rem', color: checked ? '#1e40af' : '#475569', fontWeight: checked ? 700 : 400, userSelect: 'none' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleEquipment(item)} style={{ display: 'none' }} />
+                    {checked ? '✓ ' : ''}{item}
+                  </label>
                 )
               })}
             </div>
-          )}
+          </div>
 
-          {bookingError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '1rem 0 0' }}>{bookingError}</p>}
-          {bookingSuccess && <p style={{ color: '#15803d', fontSize: '0.875rem', margin: '1rem 0 0' }}>{bookingSuccess}</p>}
+          {bookingError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '1rem 0 0', background: '#fef2f2', padding: '0.6rem 0.85rem', borderRadius: '0.375rem' }}>{bookingError}</p>}
+          {bookingSuccess && <p style={{ color: '#15803d', fontSize: '0.875rem', margin: '1rem 0 0', background: '#f0fdf4', padding: '0.6rem 0.85rem', borderRadius: '0.375rem' }}>✅ {bookingSuccess}</p>}
 
-          {availableSlots.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-primary btn-confirm"
-              onClick={onBook}
-              disabled={isBooking || !selectedSlot}
-              style={{
-                marginTop: '1.5rem',
-                opacity: (isBooking || !selectedSlot) ? 0.6 : 1,
-                cursor: (isBooking || !selectedSlot) ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {isBooking ? 'Submitting...' : selectedSlot ? `Book ${selectedSlot.timeSlot}` : 'Select a Slot'}
-            </button>
-          )}
-        </section>
-      )}
+          <button
+            onClick={onBook}
+            disabled={isBooking}
+            style={{ marginTop: '1.75rem', width: '100%', padding: '0.9rem', background: isBooking ? '#93c5fd' : '#2563eb', border: 'none', borderRadius: '0.5rem', color: '#fff', fontWeight: 800, fontSize: '1.05rem', cursor: isBooking ? 'not-allowed' : 'pointer' }}
+          >
+            {isBooking ? 'Submitting...' : 'Submit Booking'}
+          </button>
+        </div>
+      </div>
     </main>
   )
 }

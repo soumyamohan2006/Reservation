@@ -672,6 +672,11 @@
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
 }
 
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: grayscale(1) opacity(0.4);
+  cursor: pointer;
+}
+
 .booking-form .form-field input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0);
   cursor: pointer;
