@@ -167,17 +167,30 @@ export const getAllSlotsForDate = async (req, res) => {
   const { hallId, date } = req.query
   if (!hallId || !date) return res.status(400).json({ message: 'hallId and date are required.' })
   try {
+    const now = new Date()
     const Booking = (await import('../models/Booking.js')).default
     const slots = await Slot.find({ hallId, date })
     console.log('getAllSlotsForDate:', { hallId, date, foundSlots: slots.length, slots: slots.map(s => ({ id: s._id?.toString(), timeSlot: s.timeSlot, isBooked: s.isBooked, hallId: s.hallId?.toString() })) })
     const pendingBookings = await Booking.find({ hallId, slotId: { $in: slots.map(s => s._id) }, status: { $in: ['Pending', 'CustodianApproved'] } })
     const pendingSlotIds = new Set(pendingBookings.map(b => b.slotId.toString()))
-    const result = slots.map(s => ({
-      _id: s._id,
-      timeSlot: s.timeSlot,
-      date: s.date,
-      status: s.isBooked ? 'Booked' : pendingSlotIds.has(s._id.toString()) ? 'Pending' : 'Available'
-    }))
+    const result = slots.map(s => {
+      let status
+      if (s.isBooked) {
+        status = 'Booked'
+      } else if (pendingSlotIds.has(s._id.toString())) {
+        status = 'Pending'
+      } else if (s.lockedBy && s.lockedUntil && s.lockedUntil > now && s.lockedBy.toString() !== req.user.id) {
+        status = 'Locked'
+      } else {
+        status = 'Available'
+      }
+      return {
+        _id: s._id,
+        timeSlot: s.timeSlot,
+        date: s.date,
+        status,
+      }
+    })
     result.sort((a, b) => {
       const toMin = t => { const m = t.match(/^(\d+)(AM|PM)/i); if (!m) return 0; let h = parseInt(m[1]); if (m[2].toUpperCase() === 'PM' && h !== 12) h += 12; if (m[2].toUpperCase() === 'AM' && h === 12) h = 0; return h * 60 }
       return toMin(a.timeSlot.split('-')[0]) - toMin(b.timeSlot.split('-')[0])

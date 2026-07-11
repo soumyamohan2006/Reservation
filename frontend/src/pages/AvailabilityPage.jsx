@@ -6,6 +6,7 @@ const STATUS = {
   Available: { bg: '#f0fdf4', border: '#86efac', text: '#15803d', label: 'Available', dot: '🟢' },
   Booked:    { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', label: 'Booked',    dot: '🔴' },
   Pending:   { bg: '#fefce8', border: '#fde047', text: '#92400e', label: 'Selected',  dot: '🟡' },
+  Locked:    { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', label: 'In Use',    dot: '🔴' },
 }
 
 function fmtSlot(ts) {
@@ -60,20 +61,35 @@ export default function AvailabilityPage({ halls, token }) {
     return () => clearInterval(interval)
   }, [date, resolvedHallId, token])
 
-  const handleSlotClick = (slot) => {
-    if (slot.status !== 'Available') return
-    // If this date already has a selection, replace it
+  const handleSlotClick = async (slot) => {
+    if (slot.status !== 'Available' && slot.status !== 'Pending') return
+    const isSelected = selectedSlotForDate?._id === slot._id
+    if (isSelected) {
+      await fetch(`${API_URL}/api/slots/${slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      setSelections(prev => prev.filter(s => s.date !== date))
+      return
+    }
+    const lockRes = await fetch(`${API_URL}/api/slots/${slot._id}/lock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    if (!lockRes.ok) {
+      const data = await lockRes.json().catch(() => ({}))
+      alert(data.message || 'Slot is currently being selected by another user.')
+      return
+    }
     setSelections(prev => {
       const exists = prev.find(s => s.date === date)
       if (exists) {
-        if (exists.slot._id === slot._id) return prev.filter(s => s.date !== date) // deselect
+        fetch(`${API_URL}/api/slots/${exists.slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
         return prev.map(s => s.date === date ? { date, slot } : s)
       }
       return [...prev, { date, slot }]
     })
   }
 
-  const removeSelection = (d) => setSelections(prev => prev.filter(s => s.date !== d))
+  const removeSelection = (d) => {
+    const sel = selections.find(s => s.date === d)
+    if (sel) fetch(`${API_URL}/api/slots/${sel.slot._id}/unlock`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    setSelections(prev => prev.filter(s => s.date !== d))
+  }
 
   const selectedSlotForDate = selections.find(s => s.date === date)?.slot
 
