@@ -4,6 +4,7 @@ import Hall from '../models/Hall.js'
 import Notification from '../models/Notification.js'
 import User from '../models/User.js'
 import { sendMail } from '../utils/mailer.js'
+import { parseTimeRange, toLabel, toMinutes } from '../utils/bookingTime.js'
 
 // GET /api/bookings/my — user views their own bookings
 export const getMyBookings = async (req, res) => {
@@ -76,7 +77,9 @@ export const createBooking = async (req, res) => {
     const base = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}`
     const requestedOn = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     const roleLabel = user.role === 'student' ? 'Student' : user.role === 'faculty' ? 'Faculty' : user.role === 'user' ? 'Student' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
-    const [msgEvent, msgTime] = (message || '').split('|').map(s => s.trim())
+    const msgSegments = (message || '').split('|').map(s => s.trim())
+    const msgEvent = msgSegments[0] || ''
+    const msgTime = msgSegments.find(s => /^time needed:/i.test(s)) || msgSegments[1] || ''
     
     try {
       await sendMail({
@@ -128,7 +131,7 @@ export const createBooking = async (req, res) => {
                 </tr>
                 <tr>
                   <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Time</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgTime || message || 'N/A'}</td>
+                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgTime ? msgTime.replace(/^time needed:\s*/i, '') : message || 'N/A'}</td>
                 </tr>
                 <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
 
@@ -209,7 +212,9 @@ const _sendPrincipalEmail = async (booking) => {
   if (!principalEmail) return
   const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
   const base = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}&actor=principal`
-  const [msgEvent, msgTime] = (booking.message || '').split('|').map(s => s.trim())
+  const msgSegmentsPrincipal = (booking.message || '').split('|').map(s => s.trim())
+  const msgEvent = msgSegmentsPrincipal[0] || ''
+  const msgTime = msgSegmentsPrincipal.find(s => /^time needed:/i.test(s)) || ''
   try {
     await sendMail({
       to: principalEmail,
@@ -229,7 +234,7 @@ const _sendPrincipalEmail = async (booking) => {
               ${msgEvent ? `<tr><td style="padding:0.5rem 0;color:#64748b">Event Name</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgEvent}</td></tr>` : ''}
               <tr><td style="padding:0.5rem 0;color:#64748b">Date</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${booking.slotId?.date}</td></tr>
               <tr><td style="padding:0.5rem 0;color:#64748b">Time Slot</td><td style="padding:0.5rem 0;color:#0f172a">${booking.slotId?.timeSlot}</td></tr>
-              <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgTime || 'N/A'}</td></tr>
+              <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgTime ? msgTime.replace(/^time needed:\s*/i, '') : 'N/A'}</td></tr>
             </table>
             <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
               <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">✅ Final Approve</a>
@@ -243,6 +248,68 @@ const _sendPrincipalEmail = async (booking) => {
     console.log(`📧 Principal approval email sent for ${bookingRef}`)
   } catch (err) {
     console.error('Principal email error:', err.message)
+  }
+}
+
+// POST /api/bookings/backfill-splits — one-time backfill for approved bookings missing sub-slots
+export const backfillSplits = async (_req, res) => {
+  try {
+    const bookings = await Booking.find({ status: 'Approved' }).populate('slotId', 'date timeSlot hallId')
+    const MIN_SUB_SLOT_MINUTES = 180
+    const results = []
+
+    for (const booking of bookings) {
+      const slot = booking.slotId
+      if (!slot || !slot.hallId) continue
+      const timeRange = parseTimeRange(booking.message)
+      if (!timeRange) continue
+
+      const slotParts = slot.timeSlot.match(/^(.+?)-(.+)$/)
+      if (!slotParts) continue
+
+      const slotStart = toMinutes(slotParts[1])
+      const slotEnd = toMinutes(slotParts[2])
+      const bookedStart = toMinutes(timeRange.start)
+      const bookedEnd = toMinutes(timeRange.end)
+      const created = []
+
+      const bookedTs = `${toLabel(bookedStart)}-${toLabel(bookedEnd)}`
+
+      if (slot.timeSlot !== bookedTs) {
+        await Slot.findByIdAndUpdate(slot._id, { timeSlot: bookedTs, isBooked: true })
+        created.push(`updated original → ${bookedTs}`)
+      } else if (!slot.isBooked) {
+        await Slot.findByIdAndUpdate(slot._id, { isBooked: true })
+        created.push(`marked booked: ${bookedTs}`)
+      }
+
+      if (bookedStart > slotStart && (bookedStart - slotStart) > MIN_SUB_SLOT_MINUTES) {
+        const ts = `${toLabel(slotStart)}-${toLabel(bookedStart)}`
+        await Slot.findOneAndUpdate(
+          { hallId: slot.hallId, date: slot.date, timeSlot: ts },
+          { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        )
+        created.push(ts)
+      }
+      if (bookedEnd < slotEnd && (slotEnd - bookedEnd) > MIN_SUB_SLOT_MINUTES) {
+        const ts = `${toLabel(bookedEnd)}-${toLabel(slotEnd)}`
+        await Slot.findOneAndUpdate(
+          { hallId: slot.hallId, date: slot.date, timeSlot: ts },
+          { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        )
+        created.push(ts)
+      }
+
+      if (created.length) {
+        results.push({ bookingId: booking._id, originalSlot: slot.timeSlot, date: slot.date, created })
+      }
+    }
+
+    return res.json({ message: `Backfill complete. Fixed ${results.length} booking(s).`, results })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
   }
 }
 
@@ -271,76 +338,62 @@ export const updateBookingStatus = async (req, res) => {
     await booking.save()
 
     if (status === 'Approved') {
-      await Slot.findByIdAndUpdate(booking.slotId, { isBooked: true })
+      const slotId = booking.slotId?._id || booking.slotId
+      const slot = await Slot.findById(slotId)
+      const timeRange = parseTimeRange(booking.message)
+      const MIN_SUB_SLOT_MINUTES = 180
 
-      // Split remaining time into new available slot(s)
-      try {
-        const slot = await Slot.findById(booking.slotId)
-        const msgTime = (booking.message || '').split('|').pop().replace('Time needed:', '').trim()
-        console.log('Split debug — message:', booking.message)
-        console.log('Split debug — msgTime:', msgTime)
+      console.log('Slot split debug:', { slotId: slotId?.toString(), timeRange, timeSlot: slot?.timeSlot, message: booking.message })
 
-        const toMin = (t) => {
-          if (!t) return 0
-          t = t.trim()
-          if (/^\d{1,2}:\d{2}$/.test(t)) {
-            const [h, m] = t.split(':').map(Number)
-            return h * 60 + m
-          }
-          const mt = t.match(/^(\d+)(?::(\d+))?(AM|PM)$/i)
-          if (!mt) return 0
-          let h = parseInt(mt[1]), m = parseInt(mt[2] || 0)
-          const p = mt[3].toUpperCase()
-          if (p === 'PM' && h !== 12) h += 12
-          if (p === 'AM' && h === 12) h = 0
-          return h * 60 + m
-        }
-
-        const toLabel = (min) => {
-          let h = Math.floor(min / 60), m = min % 60
-          const p = h >= 12 ? 'PM' : 'AM'
-          if (h > 12) h -= 12
-          if (h === 0) h = 12
-          return m === 0 ? `${h}${p}` : `${h}:${String(m).padStart(2, '0')}${p}`
-        }
-
-        // Split timeSlot on the dash between two time labels e.g. "8AM-10PM"
+      if (slot && timeRange) {
         const slotParts = slot.timeSlot.match(/^(.+?)-(.+)$/)
-        const timeMatch = msgTime.match(/([\d]{1,2}(?::\d{2})?(?:AM|PM)?)\s*[–\-]\s*([\d]{1,2}(?::\d{2})?(?:AM|PM)?)/i)
-        console.log('Split debug — slotParts:', slotParts)
-        console.log('Split debug — timeMatch:', timeMatch)
+        if (slotParts) {
+          const slotStart = toMinutes(slotParts[1])
+          const slotEnd = toMinutes(slotParts[2])
+          const bookedStart = toMinutes(timeRange.start)
+          const bookedEnd = toMinutes(timeRange.end)
 
-        if (slot && slotParts && timeMatch) {
-          const slotStart = toMin(slotParts[1])
-          const slotEnd = toMin(slotParts[2])
-          const bookedStart = toMin(timeMatch[1])
-          const bookedEnd = toMin(timeMatch[2])
-          console.log(`slotStart=${slotStart} slotEnd=${slotEnd} bookedStart=${bookedStart} bookedEnd=${bookedEnd}`)
+          console.log('Slot split times:', { slotStart, slotEnd, bookedStart, bookedEnd })
 
-          if (bookedStart > slotStart) {
+          const bookedTs = `${toLabel(bookedStart)}-${toLabel(bookedEnd)}`
+
+          await Slot.findByIdAndUpdate(slotId, { timeSlot: bookedTs, isBooked: true })
+          console.log('Updated original slot to booked time only:', bookedTs)
+
+          if (bookedStart > slotStart && (bookedStart - slotStart) > MIN_SUB_SLOT_MINUTES) {
             const ts = `${toLabel(slotStart)}-${toLabel(bookedStart)}`
-            console.log('Creating before slot:', ts)
-            await Slot.findOneAndUpdate(
+            const created = await Slot.findOneAndUpdate(
               { hallId: slot.hallId, date: slot.date, timeSlot: ts },
               { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
               { upsert: true, new: true, setDefaultsOnInsert: true }
             )
+            console.log('Created before sub-slot:', ts, created?._id?.toString())
+          } else if (bookedStart > slotStart) {
+            console.log('Skipped before sub-slot (≤3h):', toLabel(slotStart), 'to', toLabel(bookedStart), '=', bookedStart - slotStart, 'min')
           }
-          if (bookedEnd < slotEnd) {
+          if (bookedEnd < slotEnd && (slotEnd - bookedEnd) > MIN_SUB_SLOT_MINUTES) {
             const ts = `${toLabel(bookedEnd)}-${toLabel(slotEnd)}`
-            console.log('Creating after slot:', ts)
-            await Slot.findOneAndUpdate(
+            const created = await Slot.findOneAndUpdate(
               { hallId: slot.hallId, date: slot.date, timeSlot: ts },
               { hallId: slot.hallId, date: slot.date, timeSlot: ts, isBooked: false },
               { upsert: true, new: true, setDefaultsOnInsert: true }
             )
+            console.log('Created after sub-slot:', ts, created?._id?.toString())
+          } else if (bookedEnd < slotEnd) {
+            console.log('Skipped after sub-slot (≤3h):', toLabel(bookedEnd), 'to', toLabel(slotEnd), '=', slotEnd - bookedEnd, 'min')
           }
+        } else {
+          await Slot.findByIdAndUpdate(slotId, { isBooked: true })
+          console.log('Slot timeSlot format not matched, marking whole slot booked:', slot.timeSlot)
         }
-      } catch (splitErr) {
-        console.error('Slot split error:', splitErr.message)
+      } else {
+        await Slot.findByIdAndUpdate(slotId, { isBooked: true })
+        console.log('Split skipped, marking whole slot booked:', { hasSlot: !!slot, hasTimeRange: !!timeRange })
       }
         const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
-        const [msgEvent, msgTimeNeeded] = (booking.message || '').split('|').map(s => s.trim())
+        const msgSegmentsApproval = (booking.message || '').split('|').map(s => s.trim())
+        const msgEventName = msgSegmentsApproval[0] || ''
+        const msgTimeNeeded = msgSegmentsApproval.find(s => /^time needed:/i.test(s)) || ''
         const exactTime = msgTimeNeeded ? msgTimeNeeded.replace('Time needed:', '').trim() : booking.slotId?.timeSlot
         try {
         await sendMail({

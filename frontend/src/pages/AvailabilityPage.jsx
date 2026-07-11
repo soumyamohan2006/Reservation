@@ -47,6 +47,19 @@ export default function AvailabilityPage({ halls, token }) {
       .finally(() => setLoading(false))
   }, [date, resolvedHallId, token])
 
+  useEffect(() => {
+    if (!date || !resolvedHallId) return
+    const interval = setInterval(() => {
+      fetch(`${API_URL}/api/slots/all-for-date?hallId=${resolvedHallId}&date=${date}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d)) setSlots(d) })
+        .catch(() => {})
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [date, resolvedHallId, token])
+
   const handleSlotClick = (slot) => {
     if (slot.status !== 'Available') return
     // If this date already has a selection, replace it

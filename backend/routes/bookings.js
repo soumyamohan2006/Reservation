@@ -1,11 +1,14 @@
 import { Router } from 'express'
-import { createBooking, getAllBookings, getCustodianBookings, updateBookingStatus, getMyBookings, cancelBooking } from '../controllers/bookingController.js'
+import { createBooking, getAllBookings, getCustodianBookings, updateBookingStatus, getMyBookings, cancelBooking, backfillSplits } from '../controllers/bookingController.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 
 const router = Router()
 
 // Any authenticated user can request a booking
 router.post('/', authenticate, createBooking)
+
+// One-time backfill: create missing sub-slots for already-approved bookings
+router.post('/backfill-splits', authenticate, authorize('admin'), backfillSplits)
 
 // User views their own bookings
 router.get('/my', authenticate, getMyBookings)

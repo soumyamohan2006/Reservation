@@ -50,7 +50,9 @@ export default function MyBookingsPage({ token }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {bookings.map(b => {
-              const [event, timeNeeded] = (b.message || '').split('|').map(s => s.trim())
+              const segments = (b.message || '').split('|').map(s => s.trim())
+              const event = segments[0] || ''
+              const timeNeeded = segments.find(s => /^time needed:/i.test(s)) || ''
               return (
                 <div key={b._id} style={{ background: '#fff', border: `1px solid ${statusColor(b.status)}40`, borderRadius: '0.75rem', padding: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderLeft: `4px solid ${statusColor(b.status)}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
