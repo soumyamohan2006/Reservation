@@ -171,8 +171,8 @@ function ReservePage({ halls, setHeaderNotice, token }) {
             <label style={lbl}>
               Event Type *
               <select style={{ ...inp, color: eventType ? '#0f172a' : '#94a3b8' }} value={eventType} onChange={e => setEventType(e.target.value)}>
-                <option value="" disabled>Select event type</option>
-                {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="" disabled style={{ color: '#94a3b8' }}>Select event type</option>
+                {EVENT_TYPES.map(t => <option key={t} value={t} style={{ color: '#0f172a' }}>{t}</option>)}
               </select>
               {eventType && PRINCIPAL_TYPES.includes(eventType) && (
                 <span style={{ fontSize: '0.75rem', color: '#92400e', background: '#fef9c3', padding: '0.2rem 0.5rem', borderRadius: '999px', display: 'inline-block', marginTop: '0.25rem' }}>⚠️ Requires Principal approval</span>

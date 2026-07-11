@@ -32,7 +32,6 @@ export default function AvailabilityPage({ halls, token }) {
   const [date, setDate] = useState('')
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(false)
-  // selections: [{ date, slot }]
   const [selections, setSelections] = useState([])
 
   useEffect(() => {
@@ -104,11 +103,10 @@ export default function AvailabilityPage({ halls, token }) {
 
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.875rem', padding: 0, marginBottom: '0.5rem' }}>← Back</button>
 
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem' }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Book {hall.name}</h1>
-            <p style={{ color: '#64748b', margin: '0.2rem 0 0', fontSize: '0.875rem' }}>Pick a date → select a slot → pick another date → repeat → then continue</p>
+            <p style={{ color: '#64748b', margin: '0.2rem 0 0', fontSize: '0.875rem' }}>Pick a date → select a slot → continue booking</p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {Object.entries(STATUS).map(([k, s]) => (
@@ -121,123 +119,157 @@ export default function AvailabilityPage({ halls, token }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.25rem', alignItems: 'stretch' }}>
 
-          {/* Left */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-            {/* Hall card + date picker */}
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', flex: 1 }}>
-              <img src={hall.image} alt={hall.name} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
-              <div style={{ padding: '1rem' }}>
-                <p style={{ fontWeight: 700, color: '#0f172a', margin: '0 0 0.2rem', fontSize: '1rem' }}>{hall.name}</p>
-                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0 0 0.5rem' }}>Capacity: {hall.capacity}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '1rem' }}>
-                  {hall.features?.slice(0, 3).map(f => (
-                    <span key={f} style={{ fontSize: '0.7rem', background: '#f1f5f9', color: '#475569', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>{f}</span>
-                  ))}
-                </div>
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: '#475569', fontWeight: 700, fontSize: '0.875rem' }}>
-                    Select Date
-                    <input
-                      type="date"
-                      value={date}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={e => setDate(e.target.value)}
-                      style={{ padding: '0.6rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', color: date ? '#0f172a' : '#94a3b8', background: '#f8fafc', width: '100%', boxSizing: 'border-box', colorScheme: 'light' }}
-                    />
-                  </label>
-                  {date && <p style={{ color: '#2563eb', fontSize: '0.78rem', fontWeight: 600, margin: '0.4rem 0 0' }}>{fmtDate(date)}</p>}
-                  <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: '0.5rem 0 0' }}>Select a slot on the right, then change the date to add more.</p>
-                </div>
+          {/* Left — Hall Info Only */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+            <img src={hall.image} alt={hall.name} style={{ width: '100%', height: '200px', objectFit: 'cover' }} />
+            <div style={{ padding: '1.25rem', flex: 1 }}>
+              <p style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 0.3rem', fontSize: '1.15rem' }}>{hall.name}</p>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>Capacity: <strong>{hall.capacity}</strong></p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                {hall.features?.map(f => (
+                  <span key={f} style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#475569', padding: '0.2rem 0.6rem', borderRadius: '999px', border: '1px solid #e2e8f0' }}>{f}</span>
+                ))}
               </div>
+              {hall.description && (
+                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0, lineHeight: 1.5 }}>{hall.description}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right — Date + Slots + Selections */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+
+            {/* Date Picker Card */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1rem 1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
+              <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: 0, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>Select Date</p>
+              <input
+                type="date"
+                value={date}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => setDate(e.target.value)}
+                style={{ padding: '0.5rem 0.65rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.9rem', color: date ? '#0f172a' : '#94a3b8', background: '#f8fafc', colorScheme: 'light', width: '220px', boxSizing: 'border-box' }}
+              />
+              {date && (
+                <span style={{ color: '#2563eb', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDate(date)}</span>
+              )}
             </div>
 
-            {/* Selected dates */}
+            {/* Slots Card */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', flex: 1 }}>
+              {!date ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#94a3b8', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2.5rem', filter: 'grayscale(1)', opacity: 0.4 }}>📅</span>
+                  <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>Select a date to view slots</p>
+                  <p style={{ fontSize: '0.82rem', margin: 0 }}>Available time slots will appear here</p>
+                </div>
+              ) : loading ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#64748b', gap: '0.5rem' }}>
+                  <div style={{ width: '18px', height: '18px', border: '2px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: '0.9rem' }}>Loading slots...</span>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+              ) : slots.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#94a3b8', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '2.5rem', filter: 'grayscale(0.5)' }}>🚫</span>
+                  <p style={{ fontWeight: 600, margin: 0 }}>No slots for this date</p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: '0 0 0.75rem', letterSpacing: '0.04em' }}>
+                    Available Slots
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                    {slots.map(slot => {
+                      const s = STATUS[slot.status] || STATUS.Available
+                      const isAvailable = slot.status === 'Available'
+                      const isSelected = selectedSlotForDate?._id === slot._id
+                      return (
+                        <div
+                          key={slot._id}
+                          onClick={() => handleSlotClick(slot)}
+                          style={{
+                            display: 'flex', flexDirection: 'column', gap: '0.3rem',
+                            padding: '0.85rem 1rem',
+                            background: isSelected ? '#dbeafe' : s.bg,
+                            border: `${isSelected ? '2px' : '1px'} solid ${isSelected ? '#2563eb' : s.border}`,
+                            borderRadius: '0.5rem',
+                            cursor: isAvailable ? 'pointer' : 'not-allowed',
+                            opacity: isAvailable ? 1 : 0.7,
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={e => { if (isAvailable) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.15)' } }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.85rem' }}>{isSelected ? '✓' : s.dot}</span>
+                            {isSelected
+                              ? <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2563eb', background: '#bfdbfe', padding: '0.1rem 0.45rem', borderRadius: '999px' }}>Selected</span>
+                              : !isAvailable && <span style={{ fontSize: '0.7rem', fontWeight: 700, color: s.text, background: '#fff', padding: '0.1rem 0.45rem', borderRadius: '999px', border: `1px solid ${s.border}` }}>{s.label}</span>
+                            }
+                          </div>
+                          <span style={{ fontWeight: 700, color: isSelected ? '#1e40af' : s.text, fontSize: '0.9rem' }}>{fmtSlot(slot.timeSlot)}</span>
+                          {isAvailable && !isSelected && <span style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 600 }}>Click to select →</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {selectedSlotForDate && (
+                    <p style={{ color: '#15803d', fontSize: '0.82rem', fontWeight: 600, margin: '1rem 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      ✓ Slot selected — change date to add more, or continue below
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Selected + Continue */}
             {selections.length > 0 && (
-              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: '0 0 0.75rem' }}>Selected ({selections.length})</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+                border: '1px solid #bfdbfe',
+                borderRadius: '0.75rem',
+                padding: '1.25rem',
+                boxShadow: '0 2px 8px rgba(37,99,235,0.08)',
+              }}>
+                <p style={{ color: '#1e40af', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: '0 0 0.75rem', letterSpacing: '0.04em' }}>
+                  Selected ({selections.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   {selections.map(s => (
-                    <div key={s.date} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.5rem' }}>
-                      <div>
-                        <p style={{ color: '#1e40af', fontWeight: 700, fontSize: '0.8rem', margin: 0 }}>{fmtDate(s.date)}</p>
-                        <p style={{ color: '#2563eb', fontSize: '0.75rem', margin: 0 }}>{fmtSlot(s.slot.timeSlot)}</p>
+                    <div key={s.date} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.85rem' }}>📅</span>
+                        <div>
+                          <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.82rem', margin: 0 }}>{fmtDate(s.date)}</p>
+                          <p style={{ color: '#2563eb', fontSize: '0.75rem', margin: 0 }}>{fmtSlot(s.slot.timeSlot)}</p>
+                        </div>
                       </div>
-                      <button onClick={() => removeSelection(s.date)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
+                      <button onClick={() => removeSelection(s.date)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.1rem', padding: '0 0.25rem', lineHeight: 1 }}>&times;</button>
                     </div>
                   ))}
                 </div>
                 <button
                   onClick={() => navigate(`/reserve/${hallId}`, { state: { selections } })}
-                  style={{ marginTop: '1rem', width: '100%', padding: '0.7rem', background: '#2563eb', border: 'none', borderRadius: '0.5rem', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(37,99,235,0.25)',
+                  }}
+                  onMouseEnter={e => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 12px rgba(37,99,235,0.35)' }}
+                  onMouseLeave={e => { e.target.style.transform = ''; e.target.style.boxShadow = '0 2px 8px rgba(37,99,235,0.25)' }}
                 >
                   Continue Booking →
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Right — Slots */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            {!date ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '350px', color: '#94a3b8', gap: '0.75rem' }}>
-                <span style={{ fontSize: '3rem', filter: 'grayscale(1)' }}>📅</span>
-                <p style={{ fontWeight: 600, fontSize: '1rem', margin: 0 }}>Please select a date</p>
-                <p style={{ fontSize: '0.85rem', margin: 0 }}>Available slots will appear here</p>
-              </div>
-            ) : loading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '350px', color: '#64748b' }}>Loading slots...</div>
-            ) : slots.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '350px', color: '#94a3b8', gap: '0.5rem' }}>
-                <span style={{ fontSize: '2.5rem', filter: 'grayscale(1)' }}>🚫</span>
-                <p style={{ fontWeight: 600, margin: 0 }}>No slots for this date</p>
-              </div>
-            ) : (
-              <>
-                <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.875rem', margin: '0 0 1rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Slots — {fmtDate(date)}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                  {slots.map(slot => {
-                    const s = STATUS[slot.status] || STATUS.Available
-                    const isAvailable = slot.status === 'Available'
-                    const isSelected = selectedSlotForDate?._id === slot._id
-                    return (
-                      <div
-                        key={slot._id}
-                        onClick={() => handleSlotClick(slot)}
-                        style={{
-                          display: 'flex', flexDirection: 'column', gap: '0.3rem',
-                          padding: '0.85rem 1rem',
-                          background: isSelected ? '#dbeafe' : s.bg,
-                          border: `${isSelected ? '2px' : '1px'} solid ${isSelected ? '#2563eb' : s.border}`,
-                          borderRadius: '0.5rem',
-                          cursor: isAvailable ? 'pointer' : 'not-allowed',
-                          opacity: isAvailable ? 1 : 0.7,
-                          transition: 'transform 0.1s, box-shadow 0.1s',
-                        }}
-                        onMouseEnter={e => { if (isAvailable) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.15)' } }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.85rem' }}>{isSelected ? '✓' : s.dot}</span>
-                          {isSelected
-                            ? <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2563eb', background: '#bfdbfe', padding: '0.1rem 0.45rem', borderRadius: '999px' }}>Selected</span>
-                            : !isAvailable && <span style={{ fontSize: '0.7rem', fontWeight: 700, color: s.text, background: '#fff', padding: '0.1rem 0.45rem', borderRadius: '999px', border: `1px solid ${s.border}` }}>{s.label}</span>
-                          }
-                        </div>
-                        <span style={{ fontWeight: 700, color: isSelected ? '#1e40af' : s.text, fontSize: '0.9rem' }}>{fmtSlot(slot.timeSlot)}</span>
-                        {isAvailable && !isSelected && <span style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 600 }}>Click to select →</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-                {selectedSlotForDate && (
-                  <p style={{ color: '#15803d', fontSize: '0.82rem', fontWeight: 600, margin: '1rem 0 0' }}>
-                    ✓ Slot selected for {fmtDate(date)} — pick another date or continue booking
-                  </p>
-                )}
-              </>
             )}
           </div>
         </div>

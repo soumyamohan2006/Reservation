@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config'
+import CalendarView from '../components/CalendarView'
 
 const TABS = ['Requests', 'Schedule', 'Mark Unavailable', 'History']
 
@@ -202,26 +203,8 @@ export default function CustodianPage({ token, user }) {
 
             {tab === 'Schedule' && (
               <div style={card}>
-                <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1.1rem' }}>📅 Upcoming Schedule</h2>
-                {upcoming.length === 0 ? <p style={{ color: '#64748b' }}>No upcoming slots.</p> : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                        {['Hall', 'Date', 'Time Slot', 'Status'].map(h => <th key={h} style={{ padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
-                      </tr></thead>
-                      <tbody>
-                        {upcoming.map(s => (
-                          <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '0.75rem', color: '#0f172a' }}>{s.hallId?.name || '—'}</td>
-                            <td style={{ padding: '0.75rem', color: '#0f172a' }}>{s.date}</td>
-                            <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600 }}>{s.timeSlot}</td>
-                            <td style={{ padding: '0.75rem', background: s.isBooked ? '#fee2e2' : 'transparent' }}><span style={{ ...badge(s.isBooked ? 'Booked' : 'Available'), background: s.isBooked ? '#dc2626' : '#f0fdf4', color: s.isBooked ? '#ffffff' : '#15803d' }}>{s.isBooked ? 'Booked' : 'Available'}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1.1rem' }}>📅 Schedule Calendar</h2>
+                <CalendarView bookings={bookings} slots={slots} halls={halls} />
               </div>
             )}
 

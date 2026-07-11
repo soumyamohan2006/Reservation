@@ -6,7 +6,7 @@ function HomePage({ halls, user, role }) {
     <>
       <main>
         <section className="hero-section">
-          <div className="hero-pill">• CAMPUS SPACE BOOKING PLATFORM</div>
+          <div className="hero-pill"><span className="hero-pill-dot" /> CAMPUS SPACE BOOKING PLATFORM</div>
           <h1 className="hero-title">
             Reserve Campus Halls<br />
             <span className="hero-title-blue">Instantly &amp; Effortlessly</span>

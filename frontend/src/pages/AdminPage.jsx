@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config'
+import CalendarView from '../components/CalendarView'
 
 const TIME_POINTS = ['6AM','7AM','8AM','9AM','10AM','11AM','12PM','1PM','2PM','3PM','4PM','5PM','6PM','7PM','8PM','9PM','10PM']
 
@@ -21,7 +22,7 @@ const badge = (role) => ({
 })
 const statusColor = (s) => s === 'Approved' ? '#15803d' : s === 'Rejected' ? '#b91c1c' : '#b45309'
 
-const TABS = ['🏛️ Facilities', '📋 Bookings', '👥 Users', '👤 Custodians', '🕐 Slots']
+const TABS = ['🏛️ Facilities', '📋 Bookings', '📅 Calendar', '👥 Users', '👤 Custodians', '🕐 Slots']
 
 export default function AdminPage({ token }) {
   const [tab, setTab] = useState('🏛️ Facilities')
@@ -335,6 +336,14 @@ export default function AdminPage({ token }) {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── CALENDAR TAB ── */}
+          {tab === '📅 Calendar' && (
+            <div style={card}>
+              <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1rem' }}>📅 Booking Calendar</h2>
+              <CalendarView bookings={bookings} slots={slots} halls={halls} />
             </div>
           )}
 

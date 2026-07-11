@@ -16,12 +16,14 @@ import CustodianPage from './pages/CustodianPage'
 import CustodianLoginPage from './pages/CustodianLoginPage'
 import MyBookingsPage from './pages/MyBookingsPage'
 import AvailabilityPage from './pages/AvailabilityPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function App() {
   const { pathname } = useLocation()
   const isBookingPage = pathname.startsWith('/reserve/') || pathname.startsWith('/book/') || pathname.startsWith('/availability/')
   const isSpacesPage = pathname.startsWith('/spaces')
-  const isLoginPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isLoginPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')
   const isPrivatePage = isBookingPage || isSpacesPage
   const isLightLayout = isPrivatePage || isLoginPage
   const [headerNotice, setHeaderNotice] = useState('')
@@ -29,6 +31,7 @@ function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('token') || null)
   const [role, setRole] = useState(() => sessionStorage.getItem('role') || null)
   const [dbHalls, setDbHalls] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const fetchHalls = () => {
     fetch(`${API_URL}/api/halls`)
@@ -46,6 +49,7 @@ function App() {
         }
       })
       .catch(() => {})
+      .finally(() => setTimeout(() => setLoading(false), 1200))
   }
 
   // Fetch on mount and whenever token changes (after login)
@@ -66,6 +70,25 @@ function App() {
     sessionStorage.removeItem('role')
   }
 
+  if (loading) {
+    return (
+      <div className="splash">
+        <div className="splash-logo">
+          <span className="splash-logo-text">CS</span>
+        </div>
+        <div className="splash-text">
+          <h1 className="splash-title">Campus Spaces</h1>
+          <p className="splash-sub">Loading your experience...</p>
+        </div>
+        <div className="splash-dots">
+          <div className="splash-dot" />
+          <div className="splash-dot" />
+          <div className="splash-dot" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`app-shell ${isLightLayout ? 'app-shell-light' : ''}`}>
       <header className={`top-header ${isLightLayout ? 'top-header-light' : ''}`}>
@@ -84,7 +107,7 @@ function App() {
                 {role !== 'admin' && role !== 'custodian' && <Link to="/my-bookings" className="nav-link">My Bookings</Link>}
               </div>
               <div className="nav-auth-btns">
-                <span className="nav-username">👤 {user}</span>
+                <span className="nav-username">{user}</span>
                 <Link
                   to="/"
                   className="signout-link nav-link"
@@ -150,6 +173,8 @@ function App() {
         <Route path="/login/:hallId" element={<LoginPage setUser={setUser} setToken={setToken} setRole={setRole} />} />
         <Route path="/register" element={<RegisterPage setUser={setUser} setToken={setToken} setAppRole={setRole} />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/" element={<HomePage halls={halls} user={user} role={role} />} />
         <Route path="/halls/:hallId" element={user ? <HallDetailsPage halls={halls} token={token} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />
         <Route path="/spaces" element={user ? <SpacesPage halls={halls} /> : <Navigate to="/login" state={{ from: pathname }} replace />} />

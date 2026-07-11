@@ -104,8 +104,8 @@ app.get('/api/booking-action/:id', async (req, res) => {
                       <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600">${msgTime2 || 'N/A'}</td></tr>
                     </table>
                     <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
-                      <a href="${base2}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">✅ Final Approve</a>
-                      <a href="${base2}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">❌ Reject</a>
+                      <a href="${base2}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">Final Approve</a>
+                      <a href="${base2}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700">Reject</a>
                     </div>
                   </div>
                 </div>`,

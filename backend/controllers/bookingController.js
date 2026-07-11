@@ -149,11 +149,11 @@ export const createBooking = async (req, res) => {
               <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
                 <a href="${base}&status=Approved"
                   style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  ✅ Approve
+                  Approve
                 </a>
                 <a href="${base}&status=Rejected"
                   style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  ❌ Reject
+                  Reject
                 </a>
               </div>
 
@@ -237,8 +237,8 @@ const _sendPrincipalEmail = async (booking) => {
               <tr><td style="padding:0.5rem 0;color:#64748b">Requested Time</td><td style="padding:0.5rem 0;font-weight:600;color:#0f172a">${msgTime ? msgTime.replace(/^time needed:\s*/i, '') : 'N/A'}</td></tr>
             </table>
             <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
-              <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">✅ Final Approve</a>
-              <a href="${base}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">❌ Reject</a>
+              <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">Final Approve</a>
+              <a href="${base}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">Reject</a>
             </div>
             <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
           </div>

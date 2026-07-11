@@ -2,7 +2,7 @@ const halls = [
   {
     id: 'Auditorium',
     name: 'Auditorium',
-    capacity: 500,
+    capacity: 1000,
     description: 'Meetings, workshops, presentations',
     features: ['Projector', 'Audio System', 'Stage','Control Room for Technical Support'],
     image:
@@ -11,7 +11,7 @@ const halls = [
   {
     id: 'seminar-hall',
     name: 'Seminar Hall',
-    capacity: 200,
+    capacity: 300,
     description: 'Seminars, conferences, guest lectures',
     features: ['Stage', 'Podium', 'Centralized AC', 'Professional Lighting'],
     image:
@@ -20,7 +20,7 @@ const halls = [
   {
     id: 'cgpc-hall',
     name: 'CGPC Hall',
-    capacity: 50,
+    capacity: 700,
     description: 'Training programs and academic sessions',
     features: ['Projector', 'AC', 'Wi-Fi', 'Audio System', 'Podium', 'Stage'],
     image:
