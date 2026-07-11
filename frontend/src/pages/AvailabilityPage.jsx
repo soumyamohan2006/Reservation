@@ -5,7 +5,6 @@ import { API_URL } from '../config'
 const STATUS = {
   Available: { bg: '#f0fdf4', border: '#86efac', text: '#15803d', label: 'Available', dot: '🟢' },
   Booked:    { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', label: 'Booked',    dot: '🔴' },
-  Pending:   { bg: '#fefce8', border: '#fde047', text: '#92400e', label: 'Selected',  dot: '🟡' },
   Locked:    { bg: '#fefce8', border: '#fde047', text: '#92400e', label: 'Selected',  dot: '🟡' },
 }
 
