@@ -30,6 +30,10 @@ export default function AdminPage({ token }) {
   const [users, setUsers] = useState([])
   const [bookings, setBookings] = useState([])
   const [slots, setSlots] = useState([])
+  const [slotPage, setSlotPage] = useState(1)
+  const [slotTotalPages, setSlotTotalPages] = useState(1)
+  const [slotTotal, setSlotTotal] = useState(0)
+  const [slotLimit, setSlotLimit] = useState(10)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -72,14 +76,27 @@ export default function AdminPage({ token }) {
 
   const fetchAll = async () => {
     setLoading(true)
-    await Promise.all([fetchHalls(), fetchUsers(), fetchBookings(), fetchSlots()])
+    await Promise.all([fetchHalls(), fetchUsers(), fetchBookings(), fetchSlots(1, slotLimit)])
     setLoading(false)
   }
 
   const fetchHalls    = async () => { try { const r = await api('/halls'); const d = await r.json(); if (r.ok) setHalls(d) } catch {} }
   const fetchUsers    = async () => { try { const r = await api('/users'); const d = await r.json(); if (r.ok) setUsers(d) } catch {} }
   const fetchBookings = async () => { try { const r = await api('/bookings'); const d = await r.json(); if (r.ok) setBookings(d) } catch {} }
-  const fetchSlots    = async () => { try { const r = await api('/slots'); const d = await r.json(); if (r.ok) setSlots(d) } catch {} }
+  const fetchSlots = async (page, limit) => {
+    const p = page || slotPage
+    const l = limit || slotLimit
+    try {
+      const r = await api(`/slots?page=${p}&limit=${l}`)
+      const d = await r.json()
+      if (r.ok) {
+        setSlots(d.slots)
+        setSlotTotal(d.total)
+        setSlotTotalPages(d.totalPages)
+        setSlotPage(d.page)
+      }
+    } catch {}
+  }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
 
@@ -166,7 +183,12 @@ export default function AdminPage({ token }) {
     }
   }
 
-  const deleteSlot = async (id) => { await api(`/slots/${id}`, { method: 'DELETE' }); fetchSlots() }
+  const deleteSlot = async (id) => {
+    await api(`/slots/${id}`, { method: 'DELETE' })
+    const newPage = slots.length === 1 && slotPage > 1 ? slotPage - 1 : slotPage
+    if (newPage !== slotPage) setSlotPage(newPage)
+    fetchSlots(newPage)
+  }
 
   const bulkDeleteSlots = async (e) => {
     e.preventDefault()
@@ -199,7 +221,8 @@ export default function AdminPage({ token }) {
       setDeleteStartDate('')
       setDeleteEndDate('')
       setShowBulkDelete(false)
-      fetchSlots()
+      setSlotPage(1)
+      fetchSlots(1)
     } else flash(`❌ ${d.message}`)
   }
 
@@ -531,27 +554,69 @@ export default function AdminPage({ token }) {
               )}
               <div style={card}>
                 <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1rem' }}>All Slots</h2>
-                {slots.length === 0 ? <p style={{ color: '#64748b' }}>No slots yet.</p> : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                        {['Hall', 'Date', 'Time Slot', 'Status', ''].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
-                      </tr></thead>
-                      <tbody>
-                        {slots.map(s => (
-                          <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.hallId?.name || '—'}</td>
-                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.date}</td>
-                            <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600, fontSize: '0.875rem' }}>{s.timeSlot}</td>
-                            <td style={{ padding: '0.75rem', color: s.isBooked ? '#dc2626' : '#15803d', fontWeight: 600, fontSize: '0.85rem', background: s.isBooked ? '#fee2e2' : 'transparent' }}>{s.isBooked ? 'Booked' : 'Available'}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <button onClick={() => deleteSlot(s._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#fee2e2'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {slotTotal === 0 ? <p style={{ color: '#64748b' }}>No slots yet.</p> : (
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                          {['Hall', 'Date', 'Time Slot', 'Status', ''].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {slots.map(s => (
+                            <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.hallId?.name || '—'}</td>
+                              <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{s.date}</td>
+                              <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600, fontSize: '0.875rem' }}>{s.timeSlot}</td>
+                              <td style={{ padding: '0.75rem', color: s.isBooked ? '#dc2626' : '#15803d', fontWeight: 600, fontSize: '0.85rem', background: s.isBooked ? '#fee2e2' : 'transparent' }}>{s.isBooked ? 'Booked' : 'Available'}</td>
+                              <td style={{ padding: '0.75rem' }}>
+                                <button onClick={() => deleteSlot(s._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#fee2e2'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Rows:</span>
+                        <select value={slotLimit} onChange={e => { const l = Number(e.target.value); setSlotLimit(l); setSlotPage(1); fetchSlots(1, l) }}
+                          style={{ padding: '0.3rem 0.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#0f172a', fontSize: '0.8rem', cursor: 'pointer' }}>
+                          {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                          Showing {Math.min((slotPage - 1) * slotLimit + 1, slotTotal)}–{Math.min(slotPage * slotLimit, slotTotal)} of {slotTotal}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <button onClick={() => fetchSlots(1)} disabled={slotPage <= 1}
+                          style={{ padding: '0.35rem 0.6rem', background: slotPage <= 1 ? '#f1f5f9' : '#fff', color: slotPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: slotPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>«</button>
+                        <button onClick={() => fetchSlots(slotPage - 1)} disabled={slotPage <= 1}
+                          style={{ padding: '0.35rem 0.6rem', background: slotPage <= 1 ? '#f1f5f9' : '#fff', color: slotPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: slotPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>‹</button>
+                        {(() => {
+                          const pages = []
+                          const start = Math.max(1, slotPage - 2)
+                          const end = Math.min(slotTotalPages, slotPage + 2)
+                          if (start > 1) pages.push(<button key="e1" onClick={() => fetchSlots(1)}
+                            style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>1</button>)
+                          if (start > 2) pages.push(<span key="d1" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                          for (let i = start; i <= end; i++) {
+                            pages.push(
+                              <button key={i} onClick={() => fetchSlots(i)}
+                                style={{ padding: '0.35rem 0.6rem', background: i === slotPage ? '#2563eb' : '#fff', color: i === slotPage ? '#fff' : '#475569', border: i === slotPage ? '1px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{i}</button>
+                            )
+                          }
+                          if (end < slotTotalPages - 1) pages.push(<span key="d2" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                          if (end < slotTotalPages) pages.push(<button key="en" onClick={() => fetchSlots(slotTotalPages)}
+                            style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{slotTotalPages}</button>)
+                          return pages
+                        })()}
+                        <button onClick={() => fetchSlots(slotPage + 1)} disabled={slotPage >= slotTotalPages}
+                          style={{ padding: '0.35rem 0.6rem', background: slotPage >= slotTotalPages ? '#f1f5f9' : '#fff', color: slotPage >= slotTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: slotPage >= slotTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>›</button>
+                        <button onClick={() => fetchSlots(slotTotalPages)} disabled={slotPage >= slotTotalPages}
+                          style={{ padding: '0.35rem 0.6rem', background: slotPage >= slotTotalPages ? '#f1f5f9' : '#fff', color: slotPage >= slotTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: slotPage >= slotTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>»</button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </>

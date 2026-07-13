@@ -56,9 +56,18 @@ export const createSlot = async (req, res) => {
   }
 }
 
-export const getAllSlots = async (_req, res) => {
+export const getAllSlots = async (req, res) => {
   try {
-    return res.json(await Slot.find().populate('hallId', 'name capacity'))
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
+    const skip = (page - 1) * limit
+
+    const [slots, total] = await Promise.all([
+      Slot.find().populate('hallId', 'name capacity').sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit),
+      Slot.countDocuments()
+    ])
+
+    return res.json({ slots, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }

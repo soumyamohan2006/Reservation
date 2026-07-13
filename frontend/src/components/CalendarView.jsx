@@ -109,46 +109,58 @@ export default function CalendarView({ bookings = [], slots = [], halls = [] }) 
       </div>
 
       {selected && (
-        <div style={{ marginTop: '1rem', padding: '1rem', background: surface, border: `1px solid ${border}`, borderRadius: '0.5rem' }}>
-          <h3 style={{ margin: '0 0 0.75rem', color: text, fontSize: '0.95rem' }}>{fmtDate(selected)}</h3>
-          {selectedData ? (
-            <>
-              {selectedData.slots?.length > 0 && (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <p style={{ color: muted, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem' }}>Slots</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    {selectedData.slots.map(s => (
-                      <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: s.isBooked ? '#7f1d1d20' : '#064e3b20', border: `1px solid ${s.isBooked ? '#7f1d1d' : '#064e3b'}`, borderRadius: '0.375rem' }}>
-                        <span style={{ fontSize: '0.85rem', color: text, fontWeight: 600 }}>{s.timeSlot}</span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: s.isBooked ? '#fca5a5' : '#6ee7b7' }}>{s.isBooked ? 'Booked' : 'Available'}</span>
-                      </div>
-                    ))}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={() => setSelected(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: bg, border: `1px solid ${border}`, borderRadius: '0.75rem', padding: '1.5rem', width: '100%', maxWidth: '480px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: text, fontSize: '1rem' }}>{fmtDate(selected)}</h3>
+              <button onClick={() => setSelected(null)} style={{ background: surface, border: `1px solid ${border}`, borderRadius: '0.375rem', padding: '0.3rem 0.6rem', cursor: 'pointer', color: muted, fontSize: '0.85rem' }}>✕</button>
+            </div>
+            {selectedData ? (
+              <>
+                {selectedData.bookings?.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ color: accent, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem', letterSpacing: '0.05em' }}>Bookings ({selectedData.bookings.length})</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {selectedData.bookings.map(b => {
+                        const statusBg = b.status === 'Approved' ? '#064e3b' : b.status === 'Rejected' ? '#7f1d1d' : b.status === 'CustodianApproved' ? '#2e1065' : '#78350f'
+                        const statusColor = b.status === 'Approved' ? '#6ee7b7' : b.status === 'Rejected' ? '#fca5a5' : b.status === 'CustodianApproved' ? '#c4b5fd' : '#fbbf24'
+                        return (
+                          <div key={b._id} style={{ padding: '0.6rem 0.75rem', background: surface, border: `1px solid ${border}`, borderRadius: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: text, fontWeight: 700 }}>{b.hallId?.name || 'Hall'}</span>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', background: statusBg, color: statusColor }}>{b.status}</span>
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: muted }}>{b.userId?.name || 'Unknown'} &middot; {b.userId?.email}</div>
+                            <div style={{ fontSize: '0.78rem', color: accent, fontWeight: 600, marginTop: '0.15rem' }}>{b.slotId?.timeSlot}</div>
+                            {b.message && <div style={{ fontSize: '0.75rem', color: muted, marginTop: '0.25rem', fontStyle: 'italic' }}>"{b.message}"</div>}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedData.bookings?.length > 0 && (
-                <div>
-                  <p style={{ color: muted, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem' }}>Bookings</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    {selectedData.bookings.map(b => (
-                      <div key={b._id} style={{ padding: '0.5rem 0.75rem', background: bg, border: `1px solid ${border}`, borderRadius: '0.375rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.85rem', color: text, fontWeight: 600 }}>{b.hallId?.name}</span>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', background: b.status === 'Approved' ? '#064e3b' : b.status === 'Rejected' ? '#7f1d1d' : b.status === 'CustodianApproved' ? '#2e1065' : '#78350f', color: b.status === 'Approved' ? '#6ee7b7' : b.status === 'Rejected' ? '#fca5a5' : b.status === 'CustodianApproved' ? '#c4b5fd' : '#fbbf24' }}>{b.status}</span>
+                )}
+                {selectedData.slots?.length > 0 && (
+                  <div>
+                    <p style={{ color: accent, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', margin: '0 0 0.5rem', letterSpacing: '0.05em' }}>Slots ({selectedData.slots.length})</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      {selectedData.slots.map(s => (
+                        <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: s.isBooked ? '#7f1d1d15' : '#064e3b15', border: `1px solid ${s.isBooked ? '#7f1d1d50' : '#064e3b50'}`, borderRadius: '0.375rem' }}>
+                          <span style={{ fontSize: '0.82rem', color: text, fontWeight: 600 }}>{s.timeSlot}</span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', background: s.isBooked ? '#7f1d1d' : '#064e3b', color: s.isBooked ? '#fca5a5' : '#6ee7b7' }}>{s.isBooked ? 'Booked' : 'Available'}</span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: muted, marginTop: '0.2rem' }}>{b.userId?.name} &middot; {b.slotId?.timeSlot}</div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedData.slots?.length === 0 && selectedData.bookings?.length === 0 && (
-                <p style={{ color: muted, fontSize: '0.85rem' }}>No slots or bookings on this date.</p>
-              )}
-            </>
-          ) : (
-            <p style={{ color: muted, fontSize: '0.85rem' }}>No slots or bookings on this date.</p>
-          )}
+                )}
+                {selectedData.slots?.length === 0 && selectedData.bookings?.length === 0 && (
+                  <p style={{ color: muted, fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>No events on this date.</p>
+                )}
+              </>
+            ) : (
+              <p style={{ color: muted, fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>No events on this date.</p>
+            )}
+          </div>
         </div>
       )}
     </div>
