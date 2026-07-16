@@ -2,10 +2,18 @@ import User from '../models/User.js'
 import jwt from 'jsonwebtoken'
 import { sendMail } from '../utils/mailer.js'
 
-export const getAllUsers = async (_req, res) => {
+export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password')
-    return res.json(users)
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
+    const skip = (page - 1) * limit
+
+    const [users, total] = await Promise.all([
+      User.find().select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit),
+      User.countDocuments()
+    ])
+
+    return res.json({ users, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }

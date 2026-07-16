@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { createBooking, getAllBookings, getCustodianBookings, updateBookingStatus, getMyBookings, cancelBooking, backfillSplits } from '../controllers/bookingController.js'
+import { createBooking, getAllBookings, getCustodianBookings, updateBookingStatus, getMyBookings, cancelBooking, backfillSplits, getUpcomingEvents } from '../controllers/bookingController.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 
 const router = Router()
@@ -12,6 +12,9 @@ router.post('/backfill-splits', authenticate, authorize('admin'), backfillSplits
 
 // User views their own bookings
 router.get('/my', authenticate, getMyBookings)
+
+// Upcoming events for a hall (any authenticated user)
+router.get('/upcoming/:hallId', authenticate, getUpcomingEvents)
 
 // User cancels their own pending booking
 router.delete('/:id', authenticate, cancelBooking)

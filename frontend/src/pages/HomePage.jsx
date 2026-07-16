@@ -47,14 +47,27 @@ function HomePage({ halls, user, role }) {
 
       <footer className="site-footer">
         <div className="footer-inner">
-          <div className="footer-brand">Campus Space Reservation</div>
-          <p className="footer-tagline"><em>Simplifying academic space management, one booking at a time.</em></p>
-          <div className="footer-links">
-            <Link to="/" className="footer-link">Home</Link>
-            <Link to="/login" className="footer-link">Login</Link>
-            <Link to="/register" className="footer-link">Register</Link>
+          <div className="footer-grid">
+            <div className="footer-col">
+              <div className="footer-brand">Campus Space Reservation</div>
+              <p className="footer-tagline"><em>Simplifying academic space management, one booking at a time.</em></p>
+            </div>
+            <div className="footer-col">
+              <h4 className="footer-heading">Quick Links</h4>
+              <Link to="/" className="footer-link">Home</Link>
+              <Link to="/spaces" className="footer-link">Browse Spaces</Link>
+              <Link to="/login" className="footer-link">Login</Link>
+              <Link to="/register" className="footer-link">Register</Link>
+            </div>
+            <div className="footer-col">
+              <h4 className="footer-heading">Support</h4>
+              <a href="mailto:support@campus.edu" className="footer-link">support@campus.edu</a>
+              <span className="footer-info">Mon – Fri, 9:00 AM – 5:00 PM</span>
+            </div>
           </div>
-          <p className="footer-copy">&copy; {new Date().getFullYear()} Campus Space Reservation. All rights reserved.</p>
+          <div className="footer-bottom">
+            <p className="footer-copy">&copy; {new Date().getFullYear()} Campus Space Reservation. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </>

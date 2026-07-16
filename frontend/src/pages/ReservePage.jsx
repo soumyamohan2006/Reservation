@@ -90,16 +90,20 @@ function ReservePage({ halls, setHeaderNotice, token }) {
   }
 
   const onBook = async () => {
-    if (!organizer || !eventTitle || !eventType || !participants) { setBookingError('Please fill in all required fields.'); return }
-    if (!neededStart || !neededEnd) { setBookingError('Please enter your needed start and end time.'); return }
+    if (!organizer || !eventTitle || !eventType) { setBookingError('Please fill in all required fields.'); return }
     if (timeError) { setBookingError(timeError); return }
     if (!selections.length) { setBookingError('No slot selected.'); return }
+
+    const slotParts = selections[0]?.slot?.timeSlot.match(/^(.+?)-(.+)$/)
+    const startFinal = neededStart || (slotParts ? slotParts[1] : '')
+    const endFinal = neededEnd || (slotParts ? slotParts[2] : '')
 
     setIsBooking(true)
     setBookingError('')
     setBookingSuccess('')
     try {
       const equipmentStr = equipment.length > 0 ? ` | Equipment: ${equipment.join(', ')}` : ''
+      const participantStr = participants ? ` | Participants: ${participants}` : ''
       const results = await Promise.all(selections.map(({ slot }) =>
         fetch(`${API_URL}/api/bookings`, {
           method: 'POST',
@@ -108,7 +112,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
             hallId: resolvedHallId,
             slotId: slot._id,
             eventType,
-            message: `${eventTitle} — ${organizer} | Participants: ${participants} | Time needed: ${to12hr(neededStart)}–${to12hr(neededEnd)}${equipmentStr}`,
+            message: `${eventTitle} — ${organizer}${participantStr} | Time needed: ${to12hr(startFinal)}–${to12hr(endFinal)}${equipmentStr}`,
           }),
         }).then(r => r.json())
       ))
@@ -179,21 +183,21 @@ function ReservePage({ halls, setHeaderNotice, token }) {
               )}
             </label>
             <label style={lbl}>
-              Expected Participants *
+              Expected Participants
               <input style={inp} type="number" min="1" placeholder="e.g. 150" value={participants} onChange={e => setParticipants(e.target.value)} />
             </label>
           </div>
 
           {/* Needed Time */}
           <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-            <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.875rem', margin: '0 0 0.75rem' }}>⏱ Time Needed <span style={{ color: '#94a3b8', fontWeight: 400 }}>(within selected slot)</span></p>
+            <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.875rem', margin: '0 0 0.75rem' }}>⏱ Time Needed <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional — defaults to full slot)</span></p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <label style={lbl}>
-                Start Time *
+                Start Time
                 <input type="time" style={inp} value={neededStart} onChange={e => { setNeededStart(e.target.value); validateTime(e.target.value, neededEnd) }} />
               </label>
               <label style={lbl}>
-                End Time *
+                End Time
                 <input type="time" style={inp} value={neededEnd} onChange={e => { setNeededEnd(e.target.value); validateTime(neededStart, e.target.value) }} />
               </label>
             </div>

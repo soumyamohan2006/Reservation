@@ -23,6 +23,16 @@ function fmtDate(d) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+const EVENT_ICONS = {
+  'Workshop': '🎓',
+  'Seminar': '📢',
+  'Conference': '🎤',
+  'Cultural Event': '🎭',
+  'Internal Meeting': '👥',
+  'External Event': '🏢',
+  'Event': '📌',
+}
+
 export default function AvailabilityPage({ halls, token }) {
   const { hallId } = useParams()
   const navigate = useNavigate()
@@ -33,6 +43,9 @@ export default function AvailabilityPage({ halls, token }) {
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(false)
   const [selections, setSelections] = useState([])
+  const [viewMode, setViewMode] = useState('slots')
+  const [upcomingEvents, setUpcomingEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
 
   useEffect(() => {
     if (!date || !resolvedHallId) return
@@ -58,6 +71,18 @@ export default function AvailabilityPage({ halls, token }) {
     }, 15000)
     return () => clearInterval(interval)
   }, [date, resolvedHallId, token])
+
+  useEffect(() => {
+    if (viewMode === 'slots' || !resolvedHallId) return
+    setEventsLoading(true)
+    fetch(`${API_URL}/api/bookings/upcoming/${resolvedHallId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(d => setUpcomingEvents(Array.isArray(d) ? d : []))
+      .catch(() => setUpcomingEvents([]))
+      .finally(() => setEventsLoading(false))
+  }, [viewMode, resolvedHallId, token])
 
   const handleSlotClick = async (slot) => {
     if (slot.status !== 'Available' && slot.status !== 'Pending') return
@@ -136,9 +161,40 @@ export default function AvailabilityPage({ halls, token }) {
             </div>
           </div>
 
-          {/* Right — Date + Slots + Selections */}
+          {/* Right — Toggle + Content */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
 
+            {/* View Toggle */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '0.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', gap: '0.35rem' }}>
+              {[
+                { key: 'slots', label: 'Available Slots' },
+                { key: 'events', label: 'Upcoming Events' },
+                { key: 'all', label: 'Show All' },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setViewMode(opt.key)}
+                  style={{
+                    flex: 1,
+                    padding: '0.6rem 1rem',
+                    background: viewMode === opt.key ? '#2563eb' : 'transparent',
+                    color: viewMode === opt.key ? '#fff' : '#64748b',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: viewMode === opt.key ? 700 : 500,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Available Slots View */}
+            {(viewMode === 'slots' || viewMode === 'all') && (
+              <>
             {/* Date Picker Card */}
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1rem 1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
               <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: 0, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>Select Date</p>
@@ -155,21 +211,21 @@ export default function AvailabilityPage({ halls, token }) {
             </div>
 
             {/* Slots Card */}
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', flex: 1 }}>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', flex: 1, display: 'flex', flexDirection: 'column' }}>
               {!date ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#94a3b8', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#94a3b8', gap: '0.75rem' }}>
                   <span style={{ fontSize: '2.5rem', filter: 'grayscale(1)', opacity: 0.4 }}>📅</span>
                   <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>Select a date to view slots</p>
                   <p style={{ fontSize: '0.82rem', margin: 0 }}>Available time slots will appear here</p>
                 </div>
               ) : loading ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#64748b', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#64748b', gap: '0.5rem' }}>
                   <div style={{ width: '18px', height: '18px', border: '2px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                   <span style={{ fontSize: '0.9rem' }}>Loading slots...</span>
                   <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 </div>
               ) : slots.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#94a3b8', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#94a3b8', gap: '0.5rem' }}>
                   <span style={{ fontSize: '2.5rem', filter: 'grayscale(0.5)' }}>🚫</span>
                   <p style={{ fontWeight: 600, margin: 0 }}>No slots for this date</p>
                 </div>
@@ -269,6 +325,63 @@ export default function AvailabilityPage({ halls, token }) {
                 >
                   Continue Booking →
                 </button>
+              </div>
+            )}
+              </>
+            )}
+
+            {/* Upcoming Events View */}
+            {(viewMode === 'events' || viewMode === 'all') && (
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <p style={{ color: '#475569', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', margin: '0 0 1rem', letterSpacing: '0.04em' }}>
+                  Upcoming Events — {hall.name}
+                </p>
+                {eventsLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#64748b', gap: '0.5rem' }}>
+                    <div style={{ width: '18px', height: '18px', border: '2px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    <span style={{ fontSize: '0.9rem' }}>Loading events...</span>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  </div>
+                ) : upcomingEvents.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#94a3b8', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '2.5rem', filter: 'grayscale(0.5)' }}>📭</span>
+                    <p style={{ fontWeight: 600, margin: 0 }}>No upcoming events</p>
+                    <p style={{ fontSize: '0.82rem', margin: 0 }}>Approved bookings will appear here</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {(() => {
+                      const grouped = {}
+                      upcomingEvents.forEach(ev => {
+                        if (!ev.date) return
+                        if (!grouped[ev.date]) grouped[ev.date] = []
+                        grouped[ev.date].push(ev)
+                      })
+                      return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([date, events]) => (
+                        <div key={date}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem' }}>
+                            <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.9rem', margin: 0 }}>{fmtDate(date)}</p>
+                            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {events.map((ev, i) => {
+                              const icon = EVENT_ICONS[ev.eventType] || EVENT_ICONS['Event']
+                              return (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                  <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.88rem', margin: 0 }}>{ev.eventName}</p>
+                                    <p style={{ color: '#64748b', fontSize: '0.78rem', margin: '0.15rem 0 0' }}>{ev.eventType} &middot; {fmtSlot(ev.timeSlot)}</p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                )}
               </div>
             )}
           </div>

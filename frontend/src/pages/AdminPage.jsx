@@ -34,6 +34,15 @@ export default function AdminPage({ token }) {
   const [slotTotalPages, setSlotTotalPages] = useState(1)
   const [slotTotal, setSlotTotal] = useState(0)
   const [slotLimit, setSlotLimit] = useState(10)
+  const [userPage, setUserPage] = useState(1)
+  const [userTotalPages, setUserTotalPages] = useState(1)
+  const [userTotal, setUserTotal] = useState(0)
+  const [userLimit, setUserLimit] = useState(10)
+  const [bookingPage, setBookingPage] = useState(1)
+  const [bookingTotalPages, setBookingTotalPages] = useState(1)
+  const [bookingTotal, setBookingTotal] = useState(0)
+  const [bookingLimit, setBookingLimit] = useState(10)
+  const [allCustodians, setAllCustodians] = useState([])
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -76,13 +85,40 @@ export default function AdminPage({ token }) {
 
   const fetchAll = async () => {
     setLoading(true)
-    await Promise.all([fetchHalls(), fetchUsers(), fetchBookings(), fetchSlots(1, slotLimit)])
+    await Promise.all([fetchHalls(), fetchUsers(1, userLimit), fetchBookings(1, bookingLimit), fetchSlots(1, slotLimit), fetchAllCustodians()])
     setLoading(false)
   }
 
   const fetchHalls    = async () => { try { const r = await api('/halls'); const d = await r.json(); if (r.ok) setHalls(d) } catch {} }
-  const fetchUsers    = async () => { try { const r = await api('/users'); const d = await r.json(); if (r.ok) setUsers(d) } catch {} }
-  const fetchBookings = async () => { try { const r = await api('/bookings'); const d = await r.json(); if (r.ok) setBookings(d) } catch {} }
+  const fetchAllCustodians = async () => { try { const r = await api('/users?limit=500'); const d = await r.json(); if (r.ok) setAllCustodians((d.users || d).filter(u => u.role === 'custodian')) } catch {} }
+  const fetchUsers = async (page, limit) => {
+    const p = page || userPage
+    const l = limit || userLimit
+    try {
+      const r = await api(`/users?page=${p}&limit=${l}`)
+      const d = await r.json()
+      if (r.ok) {
+        setUsers(d.users)
+        setUserTotal(d.total)
+        setUserTotalPages(d.totalPages)
+        setUserPage(d.page)
+      }
+    } catch {}
+  }
+  const fetchBookings = async (page, limit) => {
+    const p = page || bookingPage
+    const l = limit || bookingLimit
+    try {
+      const r = await api(`/bookings?page=${p}&limit=${l}`)
+      const d = await r.json()
+      if (r.ok) {
+        setBookings(d.bookings)
+        setBookingTotal(d.total)
+        setBookingTotalPages(d.totalPages)
+        setBookingPage(d.page)
+      }
+    } catch {}
+  }
   const fetchSlots = async (page, limit) => {
     const p = page || slotPage
     const l = limit || slotLimit
@@ -128,7 +164,12 @@ export default function AdminPage({ token }) {
 
   const deleteUser = async (id) => {
     if (!confirm('Delete this user?')) return
-    await api(`/users/${id}`, { method: 'DELETE' }); flash('✅ User deleted.'); fetchUsers()
+    await api(`/users/${id}`, { method: 'DELETE' })
+    flash('✅ User deleted.')
+    const newPage = users.length === 1 && userPage > 1 ? userPage - 1 : userPage
+    if (newPage !== userPage) setUserPage(newPage)
+    fetchUsers(newPage)
+    fetchAllCustodians()
   }
 
   const createCustodian = async (e) => {
@@ -142,6 +183,7 @@ export default function AdminPage({ token }) {
       setCustodianName('')
       setCustodianEmail('')
       fetchUsers()
+      fetchAllCustodians()
     } else flash(`❌ ${d.message}`)
   }
 
@@ -226,7 +268,7 @@ export default function AdminPage({ token }) {
     } else flash(`❌ ${d.message}`)
   }
 
-  const custodians = users.filter(u => u.role === 'custodian')
+  const custodians = allCustodians
   const endTimeOptions = TIME_POINTS.filter(t => !startTime || toMinutes(t) > toMinutes(startTime))
 
   const inp = { padding: '0.65rem 0.9rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.5rem', color: '#0f172a', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }
@@ -247,8 +289,8 @@ export default function AdminPage({ token }) {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem' }}>
             {[
               { label: 'Halls', val: halls.length, color: '#2563eb' },
-              { label: 'Users', val: users.length, color: '#3b82f6' },
-              { label: 'Bookings', val: bookings.length, color: '#b45309' },
+              { label: 'Users', val: userTotal, color: '#3b82f6' },
+              { label: 'Bookings', val: bookingTotal, color: '#b45309' },
             ].map(s => (
               <div key={s.label} style={{ ...card, padding: '0.6rem 1rem', marginBottom: 0, textAlign: 'center', minWidth: '70px' }}>
                 <div style={{ color: s.color, fontSize: '1.3rem', fontWeight: 800 }}>{s.val}</div>
@@ -327,37 +369,79 @@ export default function AdminPage({ token }) {
           {tab === '📋 Bookings' && (
             <div style={card}>
               <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1rem' }}>All Bookings</h2>
-              {bookings.length === 0 ? <p style={{ color: '#64748b' }}>No bookings yet.</p> : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                      {['User', 'Hall', 'Date', 'Time Slot', 'Message', 'Status', 'Action'].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {bookings.map(b => (
-                        <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.75rem' }}>
-                            <div style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{b.userId?.name}</div>
-                            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{b.userId?.email}</div>
-                          </td>
-                          <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.hallId?.name}</td>
-                          <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.slotId?.date}</td>
-                          <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600, fontSize: '0.875rem' }}>{b.slotId?.timeSlot}</td>
-                          <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem', maxWidth: '140px' }}>{b.message || '—'}</td>
-                          <td style={{ padding: '0.75rem', fontWeight: 700, color: statusColor(b.status), fontSize: '0.85rem' }}>{b.status}</td>
-                          <td style={{ padding: '0.75rem' }}>
-                            {b.status === 'Pending' && (
-                              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => updateBooking(b._id, 'Approved')} style={{ padding: '0.3rem 0.6rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.375rem', color: '#15803d', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>✅</button>
-                                <button onClick={() => updateBooking(b._id, 'Rejected')} style={{ padding: '0.3rem 0.6rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>❌</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {bookingTotal === 0 ? <p style={{ color: '#64748b' }}>No bookings yet.</p> : (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                        {['User', 'Hall', 'Date', 'Time Slot', 'Message', 'Status', 'Action'].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {bookings.map(b => (
+                          <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.75rem' }}>
+                              <div style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{b.userId?.name}</div>
+                              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{b.userId?.email}</div>
+                            </td>
+                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.hallId?.name}</td>
+                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.slotId?.date}</td>
+                            <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: 600, fontSize: '0.875rem' }}>{b.slotId?.timeSlot}</td>
+                            <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem', maxWidth: '140px' }}>{b.message || '—'}</td>
+                            <td style={{ padding: '0.75rem', fontWeight: 700, color: statusColor(b.status), fontSize: '0.85rem' }}>{b.status}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {b.status === 'Pending' && (
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button onClick={() => updateBooking(b._id, 'Approved')} style={{ padding: '0.3rem 0.6rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.375rem', color: '#15803d', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>✅</button>
+                                  <button onClick={() => updateBooking(b._id, 'Rejected')} style={{ padding: '0.3rem 0.6rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>❌</button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Rows:</span>
+                      <select value={bookingLimit} onChange={e => { const l = Number(e.target.value); setBookingLimit(l); setBookingPage(1); fetchBookings(1, l) }}
+                        style={{ padding: '0.3rem 0.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#0f172a', fontSize: '0.8rem', cursor: 'pointer' }}>
+                        {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                        Showing {Math.min((bookingPage - 1) * bookingLimit + 1, bookingTotal)}–{Math.min(bookingPage * bookingLimit, bookingTotal)} of {bookingTotal}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <button onClick={() => fetchBookings(1)} disabled={bookingPage <= 1}
+                        style={{ padding: '0.35rem 0.6rem', background: bookingPage <= 1 ? '#f1f5f9' : '#fff', color: bookingPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: bookingPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>«</button>
+                      <button onClick={() => fetchBookings(bookingPage - 1)} disabled={bookingPage <= 1}
+                        style={{ padding: '0.35rem 0.6rem', background: bookingPage <= 1 ? '#f1f5f9' : '#fff', color: bookingPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: bookingPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>‹</button>
+                      {(() => {
+                        const pages = []
+                        const start = Math.max(1, bookingPage - 2)
+                        const end = Math.min(bookingTotalPages, bookingPage + 2)
+                        if (start > 1) pages.push(<button key="e1" onClick={() => fetchBookings(1)}
+                          style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>1</button>)
+                        if (start > 2) pages.push(<span key="d1" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                        for (let i = start; i <= end; i++) {
+                          pages.push(
+                            <button key={i} onClick={() => fetchBookings(i)}
+                              style={{ padding: '0.35rem 0.6rem', background: i === bookingPage ? '#2563eb' : '#fff', color: i === bookingPage ? '#fff' : '#475569', border: i === bookingPage ? '1px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{i}</button>
+                          )
+                        }
+                        if (end < bookingTotalPages - 1) pages.push(<span key="d2" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                        if (end < bookingTotalPages) pages.push(<button key="en" onClick={() => fetchBookings(bookingTotalPages)}
+                          style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{bookingTotalPages}</button>)
+                        return pages
+                      })()}
+                      <button onClick={() => fetchBookings(bookingPage + 1)} disabled={bookingPage >= bookingTotalPages}
+                        style={{ padding: '0.35rem 0.6rem', background: bookingPage >= bookingTotalPages ? '#f1f5f9' : '#fff', color: bookingPage >= bookingTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: bookingPage >= bookingTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>›</button>
+                      <button onClick={() => fetchBookings(bookingTotalPages)} disabled={bookingPage >= bookingTotalPages}
+                        style={{ padding: '0.35rem 0.6rem', background: bookingPage >= bookingTotalPages ? '#f1f5f9' : '#fff', color: bookingPage >= bookingTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: bookingPage >= bookingTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>»</button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -374,35 +458,78 @@ export default function AdminPage({ token }) {
           {tab === '👥 Users' && (
             <div style={card}>
               <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1rem' }}>Manage Users</h2>
-              {users.filter(u => u.role !== 'custodian').length === 0 ? <p style={{ color: '#64748b' }}>No users found.</p> : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                      {['Name', 'Email', 'Role', 'Joined', 'Actions'].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {users.filter(u => u.role !== 'custodian').map(u => (
-                        <tr key={u._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{u.name}</td>
-                          <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem' }}>{u.email}</td>
-                          <td style={{ padding: '0.75rem' }}><span style={badge(u.role)}>{u.role}</span></td>
-                          <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                          <td style={{ padding: '0.75rem' }}>
-                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                              <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}
-                                style={{ padding: '0.3rem 0.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#0f172a', fontSize: '0.8rem', cursor: 'pointer' }}>
-                                <option value="student">student</option>
-                                <option value="faculty">faculty</option>
-                                <option value="admin">admin</option>
-                              </select>
-                              <button onClick={() => deleteUser(u._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#fee2e2'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {userTotal === 0 ? <p style={{ color: '#64748b' }}>No users found.</p> : (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                        {['Name', 'Email', 'Role', 'Joined', 'Actions'].map(h => <th key={h} style={{ padding: '0.7rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {users.map(u => (
+                          <tr key={u._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{u.name}</td>
+                            <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem' }}>{u.email}</td>
+                            <td style={{ padding: '0.75rem' }}><span style={badge(u.role)}>{u.role}</span></td>
+                            <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.8rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}
+                                  style={{ padding: '0.3rem 0.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#0f172a', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                  <option value="student">student</option>
+                                  <option value="faculty">faculty</option>
+                                  <option value="admin">admin</option>
+                                  <option value="custodian">custodian</option>
+                                </select>
+                                <button onClick={() => deleteUser(u._id)} style={deleteBtn} onMouseEnter={e => e.target.style.background = '#fee2e2'} onMouseLeave={e => e.target.style.background = 'transparent'}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Rows:</span>
+                      <select value={userLimit} onChange={e => { const l = Number(e.target.value); setUserLimit(l); setUserPage(1); fetchUsers(1, l) }}
+                        style={{ padding: '0.3rem 0.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.375rem', color: '#0f172a', fontSize: '0.8rem', cursor: 'pointer' }}>
+                        {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                        Showing {Math.min((userPage - 1) * userLimit + 1, userTotal)}–{Math.min(userPage * userLimit, userTotal)} of {userTotal}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <button onClick={() => fetchUsers(1)} disabled={userPage <= 1}
+                        style={{ padding: '0.35rem 0.6rem', background: userPage <= 1 ? '#f1f5f9' : '#fff', color: userPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: userPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>«</button>
+                      <button onClick={() => fetchUsers(userPage - 1)} disabled={userPage <= 1}
+                        style={{ padding: '0.35rem 0.6rem', background: userPage <= 1 ? '#f1f5f9' : '#fff', color: userPage <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: userPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>‹</button>
+                      {(() => {
+                        const pages = []
+                        const start = Math.max(1, userPage - 2)
+                        const end = Math.min(userTotalPages, userPage + 2)
+                        if (start > 1) pages.push(<button key="e1" onClick={() => fetchUsers(1)}
+                          style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>1</button>)
+                        if (start > 2) pages.push(<span key="d1" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                        for (let i = start; i <= end; i++) {
+                          pages.push(
+                            <button key={i} onClick={() => fetchUsers(i)}
+                              style={{ padding: '0.35rem 0.6rem', background: i === userPage ? '#2563eb' : '#fff', color: i === userPage ? '#fff' : '#475569', border: i === userPage ? '1px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{i}</button>
+                          )
+                        }
+                        if (end < userTotalPages - 1) pages.push(<span key="d2" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.2rem' }}>…</span>)
+                        if (end < userTotalPages) pages.push(<button key="en" onClick={() => fetchUsers(userTotalPages)}
+                          style={{ padding: '0.35rem 0.6rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{userTotalPages}</button>)
+                        return pages
+                      })()}
+                      <button onClick={() => fetchUsers(userPage + 1)} disabled={userPage >= userTotalPages}
+                        style={{ padding: '0.35rem 0.6rem', background: userPage >= userTotalPages ? '#f1f5f9' : '#fff', color: userPage >= userTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: userPage >= userTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>›</button>
+                      <button onClick={() => fetchUsers(userTotalPages)} disabled={userPage >= userTotalPages}
+                        style={{ padding: '0.35rem 0.6rem', background: userPage >= userTotalPages ? '#f1f5f9' : '#fff', color: userPage >= userTotalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: userPage >= userTotalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>»</button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

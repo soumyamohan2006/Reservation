@@ -75,10 +75,19 @@ export const getAllSlots = async (req, res) => {
 
 export const getCustodianSlots = async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
+    const skip = (page - 1) * limit
+
     const halls = await Hall.find({ custodianId: req.user.id })
     const hallIds = halls.map(h => h._id)
-    const slots = await Slot.find({ hallId: { $in: hallIds } }).populate('hallId', 'name capacity')
-    return res.json(slots)
+
+    const [slots, total] = await Promise.all([
+      Slot.find({ hallId: { $in: hallIds } }).populate('hallId', 'name capacity').skip(skip).limit(limit),
+      Slot.countDocuments({ hallId: { $in: hallIds } })
+    ])
+
+    return res.json({ slots, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }

@@ -35,6 +35,10 @@ export default function CustodianPage({ token, user }) {
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [slotMsg, setSlotMsg] = useState('')
+  const [reqPage, setReqPage] = useState(1)
+  const [histPage, setHistPage] = useState(1)
+  const [blockPage, setBlockPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const tk = () => token || localStorage.getItem('token')
 
@@ -48,17 +52,17 @@ export default function CustodianPage({ token, user }) {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/bookings/custodian`, { headers: { Authorization: `Bearer ${tk()}` } })
+      const res = await fetch(`${API_URL}/api/bookings/custodian?limit=500`, { headers: { Authorization: `Bearer ${tk()}` } })
       const data = await res.json()
-      if (res.ok) setBookings(data)
+      if (res.ok) setBookings(data.bookings || data)
     } catch {}
   }
 
   const fetchSlots = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/slots/custodian`, { headers: { Authorization: `Bearer ${tk()}` } })
+      const res = await fetch(`${API_URL}/api/slots/custodian?limit=500`, { headers: { Authorization: `Bearer ${tk()}` } })
       const data = await res.json()
-      if (res.ok) setSlots(data)
+      if (res.ok) setSlots(data.slots || data)
     } catch {}
   }
 
@@ -127,9 +131,50 @@ export default function CustodianPage({ token, user }) {
 
   const pending = bookings.filter(b => b.status === 'Pending')
   const history = bookings.filter(b => b.status !== 'Pending')
+  const blockedSlots = slots.filter(s => s.isBooked)
   const endTimeOptions = TIME_POINTS.filter(t => !startTime || toMinutes(t) > toMinutes(startTime))
   const today = new Date().toISOString().split('T')[0]
   const upcoming = slots.filter(s => s.date >= today).sort((a, b) => a.date.localeCompare(b.date))
+
+  const reqTotalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE))
+  const histTotalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE))
+  const blockTotalPages = Math.max(1, Math.ceil(blockedSlots.length / PAGE_SIZE))
+  const pendingPage = pending.slice((reqPage - 1) * PAGE_SIZE, reqPage * PAGE_SIZE)
+  const historyPage = history.slice((histPage - 1) * PAGE_SIZE, histPage * PAGE_SIZE)
+  const blockedPage = blockedSlots.slice((blockPage - 1) * PAGE_SIZE, blockPage * PAGE_SIZE)
+
+  const pagBar = (page, totalPages, total, setPage) => {
+    if (totalPages <= 1) return null
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+          Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          <button onClick={() => setPage(1)} disabled={page <= 1}
+            style={{ padding: '0.3rem 0.55rem', background: page <= 1 ? '#f1f5f9' : '#fff', color: page <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>«</button>
+          <button onClick={() => setPage(page - 1)} disabled={page <= 1}
+            style={{ padding: '0.3rem 0.55rem', background: page <= 1 ? '#f1f5f9' : '#fff', color: page <= 1 ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>‹</button>
+          {(() => {
+            const ps = []
+            const s = Math.max(1, page - 2), e = Math.min(totalPages, page + 2)
+            if (s > 1) ps.push(<button key="a" onClick={() => setPage(1)} style={{ padding: '0.3rem 0.55rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>1</button>)
+            if (s > 2) ps.push(<span key="b" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.15rem' }}>…</span>)
+            for (let i = s; i <= e; i++) ps.push(
+              <button key={i} onClick={() => setPage(i)} style={{ padding: '0.3rem 0.55rem', background: i === page ? '#2563eb' : '#fff', color: i === page ? '#fff' : '#475569', border: i === page ? '1px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{i}</button>
+            )
+            if (e < totalPages - 1) ps.push(<span key="c" style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 0.15rem' }}>…</span>)
+            if (e < totalPages) ps.push(<button key="d" onClick={() => setPage(totalPages)} style={{ padding: '0.3rem 0.55rem', background: '#fff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>{totalPages}</button>)
+            return ps
+          })()}
+          <button onClick={() => setPage(page + 1)} disabled={page >= totalPages}
+            style={{ padding: '0.3rem 0.55rem', background: page >= totalPages ? '#f1f5f9' : '#fff', color: page >= totalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>›</button>
+          <button onClick={() => setPage(totalPages)} disabled={page >= totalPages}
+            style={{ padding: '0.3rem 0.55rem', background: page >= totalPages ? '#f1f5f9' : '#fff', color: page >= totalPages ? '#cbd5e1' : '#475569', border: '1px solid #e2e8f0', borderRadius: '0.375rem', cursor: page >= totalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>»</button>
+        </div>
+      </div>
+    )
+  }
 
   const inp = { padding: '0.65rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.5rem', color: '#0f172a', fontSize: '0.95rem', width: '100%', boxSizing: 'border-box' }
   const lbl = { color: '#475569', fontSize: '0.875rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '0.4rem' }
@@ -182,21 +227,24 @@ export default function CustodianPage({ token, user }) {
               <div style={card}>
                 <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1.1rem' }}>📋 Pending Booking Requests</h2>
                 {pending.length === 0 ? <p style={{ color: '#64748b' }}>No pending requests.</p> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {pending.map(b => (
-                      <div key={b._id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                          <div style={{ color: '#0f172a', fontWeight: 700 }}>{b.userId?.name} <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.85rem' }}>({b.userId?.email})</span></div>
-                          <div style={{ color: '#2563eb', fontSize: '0.9rem' }}>🏛️ {b.hallId?.name} &nbsp;|&nbsp; 📅 {b.slotId?.date} &nbsp;|&nbsp; ⏱ {b.slotId?.timeSlot}</div>
-                          {b.message && <div style={{ color: '#64748b', fontSize: '0.85rem' }}>💬 {b.message}</div>}
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {pendingPage.map(b => (
+                        <div key={b._id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <div style={{ color: '#0f172a', fontWeight: 700 }}>{b.userId?.name} <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.85rem' }}>({b.userId?.email})</span></div>
+                            <div style={{ color: '#2563eb', fontSize: '0.9rem' }}>🏛️ {b.hallId?.name} &nbsp;|&nbsp; 📅 {b.slotId?.date} &nbsp;|&nbsp; ⏱ {b.slotId?.timeSlot}</div>
+                            {b.message && <div style={{ color: '#64748b', fontSize: '0.85rem' }}>💬 {b.message}</div>}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={() => updateStatus(b._id, 'Approved')} style={{ padding: '0.5rem 1.1rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.375rem', color: '#15803d', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>✅ Approve</button>
+                            <button onClick={() => updateStatus(b._id, 'Rejected')} style={{ padding: '0.5rem 1.1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>❌ Reject</button>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button onClick={() => updateStatus(b._id, 'Approved')} style={{ padding: '0.5rem 1.1rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.375rem', color: '#15803d', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>✅ Approve</button>
-                          <button onClick={() => updateStatus(b._id, 'Rejected')} style={{ padding: '0.5rem 1.1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>❌ Reject</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    {pagBar(reqPage, reqTotalPages, pending.length, setReqPage)}
+                  </>
                 )}
               </div>
             )}
@@ -239,15 +287,18 @@ export default function CustodianPage({ token, user }) {
                 {slotMsg && <p style={{ color: slotMsg.startsWith('✅') ? '#15803d' : '#b91c1c', fontSize: '0.85rem', margin: '0.75rem 0 0' }}>{slotMsg}</p>}
                 <div style={{ marginTop: '2rem' }}>
                   <h3 style={{ color: '#475569', fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>BLOCKED SLOTS</h3>
-                  {slots.filter(s => s.isBooked).length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No blocked slots.</p> : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {slots.filter(s => s.isBooked).map(s => (
-                        <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.375rem', padding: '0.6rem 1rem' }}>
-                          <span style={{ color: '#0f172a', fontSize: '0.875rem' }}>{s.hallId?.name} — {s.date} — <b>{s.timeSlot}</b></span>
-                          <button onClick={() => deleteSlot(s._id)} style={{ padding: '0.25rem 0.6rem', background: 'transparent', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>Remove</button>
-                        </div>
-                      ))}
-                    </div>
+                  {blockedSlots.length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No blocked slots.</p> : (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {blockedPage.map(s => (
+                          <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.375rem', padding: '0.6rem 1rem' }}>
+                            <span style={{ color: '#0f172a', fontSize: '0.875rem' }}>{s.hallId?.name} — {s.date} — <b>{s.timeSlot}</b></span>
+                            <button onClick={() => deleteSlot(s._id)} style={{ padding: '0.25rem 0.6rem', background: 'transparent', border: '1px solid #fca5a5', borderRadius: '0.375rem', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>Remove</button>
+                          </div>
+                        ))}
+                      </div>
+                      {pagBar(blockPage, blockTotalPages, blockedSlots.length, setBlockPage)}
+                    </>
                   )}
                 </div>
               </div>
@@ -257,27 +308,30 @@ export default function CustodianPage({ token, user }) {
               <div style={card}>
                 <h2 style={{ color: '#0f172a', marginTop: 0, fontSize: '1.1rem' }}>🕓 Booking History</h2>
                 {history.length === 0 ? <p style={{ color: '#64748b' }}>No history yet.</p> : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                        {['User', 'Hall', 'Date', 'Time Slot', 'Status'].map(h => <th key={h} style={{ padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
-                      </tr></thead>
-                      <tbody>
-                        {history.map(b => (
-                          <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '0.75rem' }}>
-                              <div style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{b.userId?.name}</div>
-                              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{b.userId?.email}</div>
-                            </td>
-                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.hallId?.name}</td>
-                            <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.slotId?.date}</td>
-                            <td style={{ padding: '0.75rem', color: '#2563eb', fontSize: '0.875rem', fontWeight: 600 }}>{b.slotId?.timeSlot}</td>
-                            <td style={{ padding: '0.75rem' }}><span style={badge(b.status)}>{b.status}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead><tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                          {['User', 'Hall', 'Date', 'Time Slot', 'Status'].map(h => <th key={h} style={{ padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {historyPage.map(b => (
+                            <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.75rem' }}>
+                                <div style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 600 }}>{b.userId?.name}</div>
+                                <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{b.userId?.email}</div>
+                              </td>
+                              <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.hallId?.name}</td>
+                              <td style={{ padding: '0.75rem', color: '#0f172a', fontSize: '0.875rem' }}>{b.slotId?.date}</td>
+                              <td style={{ padding: '0.75rem', color: '#2563eb', fontSize: '0.875rem', fontWeight: 600 }}>{b.slotId?.timeSlot}</td>
+                              <td style={{ padding: '0.75rem' }}><span style={badge(b.status)}>{b.status}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {pagBar(histPage, histTotalPages, history.length, setHistPage)}
+                  </>
                 )}
               </div>
             )}

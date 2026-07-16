@@ -177,14 +177,23 @@ export const createBooking = async (req, res) => {
 }
 
 // GET /api/bookings — custodian/admin views all bookings
-export const getAllBookings = async (_req, res) => {
+export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate('userId', 'name email')
-      .populate('hallId', 'name')
-      .populate('slotId', 'date timeSlot')
-      .sort({ createdAt: -1 })
-    return res.json(bookings)
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
+    const skip = (page - 1) * limit
+
+    const [bookings, total] = await Promise.all([
+      Booking.find()
+        .populate('userId', 'name email')
+        .populate('hallId', 'name')
+        .populate('slotId', 'date timeSlot')
+        .sort({ createdAt: -1 })
+        .skip(skip).limit(limit),
+      Booking.countDocuments()
+    ])
+
+    return res.json({ bookings, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
@@ -193,14 +202,24 @@ export const getAllBookings = async (_req, res) => {
 // GET /api/bookings/custodian — custodian views only their hall bookings
 export const getCustodianBookings = async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
+    const skip = (page - 1) * limit
+
     const halls = await Hall.find({ custodianId: req.user.id })
     const hallIds = halls.map(h => h._id)
-    const bookings = await Booking.find({ hallId: { $in: hallIds } })
-      .populate('userId', 'name email')
-      .populate('hallId', 'name')
-      .populate('slotId', 'date timeSlot')
-      .sort({ createdAt: -1 })
-    return res.json(bookings)
+
+    const [bookings, total] = await Promise.all([
+      Booking.find({ hallId: { $in: hallIds } })
+        .populate('userId', 'name email')
+        .populate('hallId', 'name')
+        .populate('slotId', 'date timeSlot')
+        .sort({ createdAt: -1 })
+        .skip(skip).limit(limit),
+      Booking.countDocuments({ hallId: { $in: hallIds } })
+    ])
+
+    return res.json({ bookings, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
@@ -308,6 +327,39 @@ export const backfillSplits = async (_req, res) => {
     }
 
     return res.json({ message: `Backfill complete. Fixed ${results.length} booking(s).`, results })
+  } catch (err) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+
+// GET /api/bookings/upcoming/:hallId — public upcoming events for a hall (privacy-safe)
+export const getUpcomingEvents = async (req, res) => {
+  try {
+    const { hallId } = req.params
+    const today = new Date().toISOString().split('T')[0]
+
+    const bookings = await Booking.find({
+      hallId,
+      status: { $in: ['Approved', 'CustodianApproved'] },
+    })
+      .populate('hallId', 'name')
+      .populate('slotId', 'date timeSlot')
+      .sort({ createdAt: -1 })
+
+    const upcoming = bookings.filter(b => b.slotId?.date >= today)
+
+    const events = upcoming.map(b => {
+      const eventName = (b.message || '').split('|')[0]?.replace(/\s*--.*$/, '').trim() || b.eventType || 'Event'
+      return {
+        eventName,
+        eventType: b.eventType || 'Event',
+        date: b.slotId?.date,
+        timeSlot: b.slotId?.timeSlot,
+        hallName: b.hallId?.name,
+      }
+    })
+
+    return res.json(events)
   } catch (err) {
     return res.status(500).json({ message: err.message })
   }
