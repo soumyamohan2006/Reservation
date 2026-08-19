@@ -10,8 +10,8 @@ const halls = [
   },
   {
     id: 'seminar-hall',
-    name: 'Seminar Hall',
-    capacity: 300,
+    name: 'Main Block Seminar Hall',
+    capacity: 130,
     description: 'Seminars, conferences, guest lectures',
     features: ['Stage', 'Podium', 'Centralized AC', 'Professional Lighting'],
     image:
@@ -20,7 +20,7 @@ const halls = [
   {
     id: 'cgpc-hall',
     name: 'CGPC Hall',
-    capacity: 700,
+    capacity: 180,
     description: 'Training programs and academic sessions',
     features: ['Projector', 'AC', 'Wi-Fi', 'Audio System', 'Podium', 'Stage'],
     image:

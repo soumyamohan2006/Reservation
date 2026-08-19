@@ -127,8 +127,8 @@ export const createBooking = async (req, res) => {
                   <tr><td style="padding:0.55rem 0;color:#64748b">Requested On</td><td style="padding:0.55rem 0;color:#0f172a">${requestedOn}</td></tr>
                   ${requiresPrincipalApproval ? `<tr><td colspan="2" style="padding:0.55rem 0"><span style="background:#fef9c3;color:#92400e;padding:0.3rem 0.75rem;border-radius:999px;font-size:0.78rem;font-weight:700">⚠️ Requires Principal approval after your approval</span></td></tr>` : ''}
                 </table>
-                <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
-                  <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">Approve</a>
+                <div style="margin-top:1.75rem;display:flex;gap:3rem">
+                  <a href="${base}&status=Approved" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem;margin-right:1rem">Approve</a>
                   <a href="${base}&status=Rejected" style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">Reject</a>
                 </div>
                 <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
