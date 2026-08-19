@@ -11,6 +11,7 @@ const bookingSchema = new mongoose.Schema({
   emailSentToCustodian: { type: Boolean, default: false },
   emailSentToUser: { type: Boolean, default: false },
   emailError: { type: String, default: '' },
+  groupId: { type: String, default: '' },
 }, { timestamps: true })
 
 export default mongoose.model('Booking', bookingSchema)

@@ -101,6 +101,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
     setIsBooking(true)
     setBookingError('')
     setBookingSuccess('')
+    const groupId = selections.length > 1 ? crypto.randomUUID() : ''
     try {
       const equipmentStr = equipment.length > 0 ? ` | Equipment: ${equipment.join(', ')}` : ''
       const participantStr = participants ? ` | Participants: ${participants}` : ''
@@ -112,6 +113,7 @@ function ReservePage({ halls, setHeaderNotice, token }) {
             hallId: resolvedHallId,
             slotId: slot._id,
             eventType,
+            groupId,
             message: `${eventTitle} — ${organizer}${participantStr} | Time needed: ${to12hr(startFinal)}–${to12hr(endFinal)}${equipmentStr}`,
           }),
         }).then(r => r.json())

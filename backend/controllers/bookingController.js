@@ -41,7 +41,7 @@ const PRINCIPAL_APPROVAL_TYPES = ['Conference', 'Cultural Event', 'External Even
 
 // POST /api/bookings — user requests a booking
 export const createBooking = async (req, res) => {
-  const { hallId, slotId, message, eventType } = req.body
+  const { hallId, slotId, message, eventType, groupId } = req.body
   if (!hallId || !slotId)
     return res.status(400).json({ message: 'hallId and slotId are required.' })
 
@@ -60,6 +60,7 @@ export const createBooking = async (req, res) => {
       eventType: eventType || '',
       requiresPrincipalApproval,
       message: message || '',
+      groupId: groupId || '',
     })
 
     await Notification.create({
@@ -68,106 +69,84 @@ export const createBooking = async (req, res) => {
       bookingId: booking._id,
     })
 
-    // Email custodian about new booking request
+    // Email custodian — one email per group (or immediately for single bookings)
     const user = await User.findById(req.user.id, 'name email role')
     const hallName = slot.hallId?.name || 'Hall'
     const custodian = slot.hallId?.custodianId
     const custodianEmail = custodian?.email || process.env.CUSTODIAN_EMAIL
-    const bookingRef = `BK${booking._id.toString().slice(-4).toUpperCase()}`
-    const base = `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/booking-action/${booking._id}?token=${process.env.ACTION_SECRET}`
     const requestedOn = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     const roleLabel = user.role === 'student' ? 'Student' : user.role === 'faculty' ? 'Faculty' : user.role === 'user' ? 'Student' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
     const msgSegments = (message || '').split('|').map(s => s.trim())
     const msgEvent = msgSegments[0] || ''
     const msgTime = msgSegments.find(s => /^time needed:/i.test(s)) || msgSegments[1] || ''
-    
-    try {
-      await sendMail({
-        to: custodianEmail,
-        subject: `New Booking Request — ${bookingRef}`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
-            <div style="background:#1e3a8a;padding:1.25rem 1.5rem">
-              <h2 style="color:#fff;margin:0;font-size:1.1rem">📋 New Hall Booking Request</h2>
-            </div>
-            <div style="padding:1.5rem">
+    const timeLabel = msgTime ? msgTime.replace(/^time needed:\s*/i, '') : 'N/A'
 
-              <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;width:40%;vertical-align:top">Booking ID</td>
-                  <td style="padding:0.55rem 0;font-weight:700;color:#1e3a8a;font-size:1rem;letter-spacing:0.05em">${bookingRef}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested by</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${user.name}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Email</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${user.email}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Facility</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${hallName}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Type</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${eventType || '—'}</td>
-                </tr>
-                ${msgEvent ? `<tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Event Name</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgEvent}</td>
-                </tr>` : ''}
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Date</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${slot.date}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Available Slot</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${slot.timeSlot}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested Time</td>
-                  <td style="padding:0.55rem 0;font-weight:600;color:#0f172a">${msgTime ? msgTime.replace(/^time needed:\s*/i, '') : message || 'N/A'}</td>
-                </tr>
-                <tr><td colspan="2" style="border-top:1px solid #f1f5f9;padding:0.3rem 0"></td></tr>
-
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Role</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${roleLabel}</td>
-                </tr>
-                <tr>
-                  <td style="padding:0.55rem 0;color:#64748b;vertical-align:top">Requested On</td>
-                  <td style="padding:0.55rem 0;color:#0f172a">${requestedOn}</td>
-                </tr>
-                ${requiresPrincipalApproval ? `<tr><td colspan="2" style="padding:0.55rem 0"><span style="background:#fef9c3;color:#92400e;padding:0.3rem 0.75rem;border-radius:999px;font-size:0.78rem;font-weight:700">⚠️ Requires Principal approval after your approval</span></td></tr>` : ''}
-              </table>
-
-              <div style="margin-top:1.75rem;display:flex;gap:0.75rem">
-                <a href="${base}&status=Approved"
-                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  Approve
-                </a>
-                <a href="${base}&status=Rejected"
-                  style="flex:1;text-align:center;padding:0.7rem 1rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:700;font-size:0.95rem">
-                  Reject
-                </a>
+    const sendGroupEmail = async (bookingId) => {
+      const alreadySent = await Booking.exists({ groupId, emailSentToCustodian: true })
+      if (alreadySent) return
+      const groupBookings = await Booking.find({ groupId }).populate('slotId', 'date timeSlot').sort({ 'slotId.date': 1 })
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000'
+      const token = process.env.ACTION_SECRET
+      const dateRows = groupBookings.map(b => {
+        const approveUrl = `${backendUrl}/api/booking-action/${b._id}?token=${token}&status=Approved`
+        const rejectUrl = `${backendUrl}/api/booking-action/${b._id}?token=${token}&status=Rejected`
+        return `
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:0.6rem 0.5rem;color:#0f172a;font-weight:600;white-space:nowrap">${b.slotId?.date || ''}</td>
+            <td style="padding:0.6rem 0.5rem;color:#2563eb;font-weight:600;white-space:nowrap">${b.slotId?.timeSlot || ''}</td>
+            <td style="padding:0.6rem 0.5rem;white-space:nowrap">
+              <a href="${approveUrl}" style="padding:0.3rem 0.75rem;background:#16a34a;color:#fff;text-decoration:none;border-radius:0.375rem;font-weight:700;font-size:0.8rem;margin-right:0.4rem">Approve</a>
+              <a href="${rejectUrl}" style="padding:0.3rem 0.75rem;background:#dc2626;color:#fff;text-decoration:none;border-radius:0.375rem;font-weight:700;font-size:0.8rem">Reject</a>
+            </td>
+          </tr>`
+      }).join('')
+      const ref = `BK${bookingId.toString().slice(-4).toUpperCase()}`
+      const isMulti = groupBookings.length > 1
+      try {
+        await sendMail({
+          to: custodianEmail,
+          subject: `New Booking Request — ${ref}${isMulti ? ` (${groupBookings.length} dates)` : ''}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden">
+              <div style="background:#1e3a8a;padding:1.25rem 1.5rem">
+                <h2 style="color:#fff;margin:0;font-size:1.1rem">📋 New Hall Booking Request</h2>
               </div>
+              <div style="padding:1.5rem">
+                <table style="width:100%;border-collapse:collapse;font-size:0.9rem;margin-bottom:1.25rem">
+                  <tr><td style="padding:0.45rem 0;color:#64748b;width:38%">Requested by</td><td style="padding:0.45rem 0;font-weight:600;color:#0f172a">${user.name} (${user.email})</td></tr>
+                  <tr><td style="padding:0.45rem 0;color:#64748b">Role</td><td style="padding:0.45rem 0;color:#0f172a">${roleLabel}</td></tr>
+                  <tr><td style="padding:0.45rem 0;color:#64748b">Facility</td><td style="padding:0.45rem 0;font-weight:600;color:#0f172a">${hallName}</td></tr>
+                  <tr><td style="padding:0.45rem 0;color:#64748b">Event Type</td><td style="padding:0.45rem 0;font-weight:600;color:#0f172a">${eventType || '—'}</td></tr>
+                  ${msgEvent ? `<tr><td style="padding:0.45rem 0;color:#64748b">Event Name</td><td style="padding:0.45rem 0;font-weight:600;color:#0f172a">${msgEvent}</td></tr>` : ''}
+                  <tr><td style="padding:0.45rem 0;color:#64748b">Time Needed</td><td style="padding:0.45rem 0;font-weight:600;color:#0f172a">${timeLabel}</td></tr>
+                  <tr><td style="padding:0.45rem 0;color:#64748b">Requested On</td><td style="padding:0.45rem 0;color:#0f172a">${requestedOn}</td></tr>
+                  ${requiresPrincipalApproval ? `<tr><td colspan="2" style="padding:0.45rem 0"><span style="background:#fef9c3;color:#92400e;padding:0.25rem 0.6rem;border-radius:999px;font-size:0.78rem;font-weight:700">⚠️ Requires Principal approval after your approval</span></td></tr>` : ''}
+                </table>
+                <p style="color:#475569;font-weight:700;font-size:0.85rem;margin:0 0 0.5rem">${isMulti ? `📅 ${groupBookings.length} Dates Requested` : '📅 Date Requested'}</p>
+                <table style="width:100%;border-collapse:collapse;font-size:0.875rem">
+                  <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+                    <th style="padding:0.5rem;text-align:left;color:#64748b;font-size:0.78rem">DATE</th>
+                    <th style="padding:0.5rem;text-align:left;color:#64748b;font-size:0.78rem">TIME SLOT</th>
+                    <th style="padding:0.5rem;text-align:left;color:#64748b;font-size:0.78rem">ACTION</th>
+                  </tr></thead>
+                  <tbody>${dateRows}</tbody>
+                </table>
+                <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${ref} · Campus Hall Booking System</p>
+              </div>
+            </div>`,
+        })
+        await Booking.updateOne({ _id: bookingId }, { emailSentToCustodian: true })
+      } catch (err) {
+        console.error('Custodian email error:', err.message)
+        await Booking.updateOne({ _id: bookingId }, { emailError: `Custodian email failed: ${err.message}` })
+      }
+    }
 
-              <p style="color:#94a3b8;font-size:0.72rem;margin-top:1.25rem;text-align:center">${bookingRef} · Campus Hall Booking System</p>
-            </div>
-          </div>
-        `,
-      })
-      booking.emailSentToCustodian = true
-      await booking.save()
-    } catch (err) {
-      console.error('Custodian email error:', err.message)
-      booking.emailError = `Custodian email failed: ${err.message}`
-      await booking.save()
+    if (groupId) {
+      // Delay to let all parallel bookings in the group save first, then send one email
+      setTimeout(() => sendGroupEmail(booking._id), 1500)
+    } else {
+      await sendGroupEmail(booking._id)
     }
 
     return res.status(201).json(booking)
